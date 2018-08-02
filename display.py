@@ -124,17 +124,6 @@ class TextSprite (pygame.sprite.Sprite):
     def erase (self):
         ALL_SPRITES[layer].remove (self)
 
-#class Card (SimpleSprite):
-#    def update(self):
-#        """Callback, called every update"""
-
-#    def go_to (self, x, y):
-#        self.rect.x = x
-#        self.rect.y = y
-
-#    def erase(self):
-#        SimpleSprite.erase(self)
-
 
 class Display():
     def __init__(self):
@@ -193,5 +182,41 @@ class Display():
                 handler(pos)
             time.sleep(0.05)
 
-    #Game Over
+class Interface ():
+    def __init__(self, father, display, ui_sprite_name, keys=[]):
+        self.display = display
+        self.father = father
+        self.keys = keys
+        self.ui_sprite_name = ui_sprite_name
+        self.ui_sprite = SimpleSprite(ui_sprite_name, layer=1)
+        if self.father:
+            self.father.desactivate()
+        self.activate()
+
+    def desactivate(self):
+        self.display.unsubscribe_click(self.on_click)
+        self.display.unsubscribe_update(self.update)
+        for k, v in self.keys:
+            self.display.unsubscribe_key(k, v)
+        self.ui_sprite.erase()
+
+    def activate(self):
+        self.display.subscribe_click(self.on_click)
+        self.display.subscribe_update(self.update)
+        for k, v in self.keys:
+            self.display.subscribe_key(k, v)
+        self.ui_sprite = SimpleSprite(self.ui_sprite_name, layer=1)
+
+    def update(self, pos):
+        pass
+
+    def on_click(self, pos):
+        pass
+
+    def done(self):
+        self.desactivate()
+        if self.father:
+            self.father.activate()
+        else:
+            exit(0)
 

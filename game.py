@@ -4,8 +4,6 @@ from math import *
 from pygame.locals import *
 import random
 
-DISPLAY = display.Display()
-
 class GameTile():
     CO = cos(pi/6)
     MAP_RADIUS = 7.25
@@ -86,26 +84,37 @@ class Entity (display.SimpleSprite):
     def step_to(self, target):
         return min(self.tile.neighbours(), key = lambda x: x.dist(target))
 
-
-class Creature (Entity):
-    def __init__ (self, game, game_tile, creaturedef):
-        self.game = game
+class Creature():
+    def __init__ (self, creaturedef):
         self.health = creaturedef['health']
         self.is_pc = creaturedef['is_pc']
         self.damage = creaturedef['damage']
-        self.creaturedef = creaturedef
         self.portrait = 'portraits/' + creaturedef['portrait']
+        self.creaturedef = creaturedef
         self.next_action = 0
-        super(Creature, self).__init__(game_tile, creaturedef['image'], creaturedef['is_pc'])
+        self.entity = None
+        self.game = None
+
+    def set_in_game(self, game, game_tile):
+        self.entity = Entity(game_tile, self.creaturedef['image'], self.creaturedef['is_pc'])
+        self.game = game
+        self.game.creatures[game_tile] = self
+
+    ### Below this : only valid if previously instanciated
+
+    def erase(self):
+        self.entity.erase()
+        self.game = None
+        self.entity = None
 
     def move_or_attack(self, destination):
         self.next_action += 4
         if destination in self.game.creatures or not destination.in_boundaries():
             return self.attack(destination)
-        del self.game.creatures[self.tile]
-        self.tile = destination
-        self.rect.x = 208 + 32 * (8 + self.tile.x)
-        self.rect.y = 60 + 32 * (7 + self.tile.y)
+        del self.game.creatures[self.entity.tile]
+        self.entity.tile = destination
+        self.entity.rect.x = 208 + 32 * (8 + self.entity.tile.x)
+        self.entity.rect.y = 60 + 32 * (7 + self.entity.tile.y)
         self.game.creatures[destination] = self
 
     def attack(self, destination):
@@ -114,13 +123,13 @@ class Creature (Entity):
     def take_damage(self, number):
         self.health -= number
         if self.health < 0:
-            del self.game.creatures[self.tile]
+            del self.game.creatures[self.entity.tile]
             self.erase()
 
     def ai_play(self):
         nearest_pc = min( [c for c in self.game.creatures.values() if c.is_pc], 
-                key= lambda x: x.tile.dist(self.tile))
-        self.move_or_attack(self.step_to(nearest_pc.tile))
+                key= lambda x: x.entity.tile.dist(self.entity.tile))
+        self.move_or_attack(self.entity.step_to(nearest_pc.entity.tile))
 
 class HoverDisplay ():
     def __init__ (self):
@@ -142,10 +151,10 @@ class HoverDisplay ():
         self.gauge.erase()
 
 class Game():
-    def __init__(self):
+    def __init__(self, pc_list):
         self.turn = 0
         self.creatures = {}
-        self.spawn_creatures()
+        self.spawn_creatures(pc_list)
         #Will be set by new turn, only here declaring
         self.active_pc = None
         self.new_turn()
@@ -154,14 +163,16 @@ class Game():
     def active_pc(self):
         return self.pc_list[self.active]
 
-    def spawn_creatures(self):
-        self.creatures[GameTile(0, 6)] = Creature(self, GameTile(0, 6), defs.PC1)
-        self.creatures[GameTile(0, 5)] = Creature(self, GameTile(0, 5), defs.PC2)
-        self.creatures[GameTile(0, -6)] = Creature(self, GameTile(0,-6), defs.MOB1)
+    def spawn_creatures(self, pcs):
+        for pc, gt in zip(pcs, [(0, 1), (1, 1.5), (-1, 1.5), (2, 2), (-2, 2)]):
+            if pc.health > 0:
+                pc.set_in_game(self, GameTile(*gt))
+        c = Creature(defs.MOB1)
+        c.set_in_game(self, GameTile(0, 0))
 
     def move_pc(self, tile):
-        new_tile = self.active_pc.step_to(tile)
-        self.creatures[self.active_pc.tile].move_or_attack(new_tile)
+        new_tile = self.active_pc.entity.step_to(tile)
+        self.creatures[self.active_pc.entity.tile].move_or_attack(new_tile)
         self.new_turn()
 
     def new_turn(self):
@@ -186,49 +197,19 @@ class Game():
             c.erase()
         self.hover_display.erase_all()
 
-class Interface ():
-    def __init__(self, father, ui_sprite_name, keys=[]):
-        self.father = father
-        self.keys = keys
-        self.ui_sprite_name = ui_sprite_name
-        self.ui_sprite = display.SimpleSprite(ui_sprite_name, layer=1)
-        if self.father:
-            self.father.desactivate()
-        self.activate()
-
-    def desactivate(self):
-        DISPLAY.unsubscribe_click(self.on_click)
-        DISPLAY.unsubscribe_update(self.update)
-        for k, v in self.keys:
-            DISPLAY.unsubscribe_key(k, v)
-        self.ui_sprite.erase()
-
-
-    def activate(self):
-        DISPLAY.subscribe_click(self.on_click)
-        DISPLAY.subscribe_update(self.update)
-        for k, v in self.keys:
-            DISPLAY.subscribe_key(k, v)
-        self.ui_sprite = display.SimpleSprite(self.ui_sprite_name, layer=1)
-
-    def update(self, pos):
-        pass
-
-    def on_click(self, pos):
-        pass
-
-    def done(self):
-        if self.father:
-            self.father.activate()
-        else:
-            exit(0)
-
-class GameInterface (Interface):
+class GameInterface (display.Interface):
     def __init__ (self, father):
-        self.game = Game()
+        self.game = Game(father.pc_list)
         self.board = {}
         self._add_board()
-        super(GameInterface, self).__init__(father, 'bg.png')
+        super(GameInterface, self).__init__(father, father.display, 'bg.png', keys=[
+            (K_KP4, self.go_sw),
+            (K_KP5, self.go_s),
+            (K_KP6, self.go_se),
+            (K_KP7, self.go_nw),
+            (K_KP8, self.go_n),
+            (K_KP9, self.go_ne)
+            ])
 
     def _add_board(self):
         center = GameTile(0,0) 
@@ -244,9 +225,28 @@ class GameInterface (Interface):
                 return tile
 
     def on_click(self, mouse_pos):
-        t = self.get_tile_for_mouse(mouse_pos)
-        if t:
-            self.game.move_pc(t)
+        pass
+
+    def go_s(self, _):
+        self.go(self.game.active_pc.entity.tile.neighbours()[3])
+
+    def go_sw(self, _):
+        self.go(self.game.active_pc.entity.tile.neighbours()[4])
+
+    def go_nw(self, _):
+        self.go(self.game.active_pc.entity.tile.neighbours()[5])
+
+    def go_n(self, _):
+        self.go(self.game.active_pc.entity.tile.neighbours()[0])
+
+    def go_ne(self, _):
+        self.go(self.game.active_pc.entity.tile.neighbours()[1])
+
+    def go_se(self, _):
+        self.go(self.game.active_pc.entity.tile.neighbours()[2])
+
+    def go(self, tile):
+        self.game.move_pc(tile)
         if self.game.is_over():
             for tile in self.board.values():
                 tile.erase()
@@ -259,58 +259,9 @@ class GameInterface (Interface):
 
         #Highlight active player
         if self.game.active_pc:
-            self.board[self.game.active_pc.tile].animate('tiles/Green2.png')
+            self.board[self.game.active_pc.entity.tile].animate('tiles/Green2.png')
         t = self.get_tile_for_mouse(mouse_pos)
         if t:
             self.game.update(t)
     
-class MainMenuInterface(Interface):
-    def __init__(self):
-        super(MainMenuInterface, self).__init__(None, 'menu.png', keys = [
-            (K_ESCAPE, self.done),
-            (K_RETURN, self.start),
-            ])
-    def start(self, key):
-        WorldInterface(self)
 
-class WorldInterface(Interface):
-    def __init__(self, father):
-        self.world_map = {}
-        self.pc_tile = GameTile(0, 0)
-        super(WorldInterface, self).__init__(father, 'worldmap.png', keys = [
-            (K_KP4, self.go_sw),
-            (K_KP5, self.go_s),
-            (K_KP6, self.go_se),
-            (K_KP7, self.go_nw),
-            (K_KP8, self.go_n),
-            (K_KP9, self.go_ne)
-            ])
-
-    def go_s(self, _):
-        self.go(self.pc_tile.neighbours()[0])
-
-    def go_se(self, _):
-        self.go(self.pc_tile.neighbours()[1])
-
-    def go_ne(self, _):
-        self.go(self.pc_tile.neighbours()[2])
-
-    def go_n(self, _):
-        self.go(self.pc_tile.neighbours()[3])
-
-    def go_nw(self, _):
-        self.go(self.pc_tile.neighbours()[4])
-
-    def go_sw(self, _):
-        self.go(self.pc_tile.neighbours()[5])
-
-    def go(self, tile):
-        self.start_game()
-
-    def start_game(self):
-        gi = GameInterface(self)
-
-#this calls the 'main' function when this script is executed
-if __name__ == '__main__':
-    m = MainMenuInterface()
-    DISPLAY.main()

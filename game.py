@@ -2,8 +2,8 @@ import display
 import defs
 from math import *
 from pygame.locals import *
+import random
 
-CREATURES = {}
 DISPLAY = display.Display()
 
 class GameTile():
@@ -88,7 +88,8 @@ class Entity (display.SimpleSprite):
 
 
 class Creature (Entity):
-    def __init__ (self, game_tile, creaturedef):
+    def __init__ (self, game, game_tile, creaturedef):
+        self.game = game
         self.health = creaturedef['health']
         self.is_pc = creaturedef['is_pc']
         self.damage = creaturedef['damage']
@@ -99,31 +100,31 @@ class Creature (Entity):
 
     def move_or_attack(self, destination):
         self.next_action += 4
-        if destination in CREATURES or not destination.in_boundaries():
+        if destination in self.game.creatures or not destination.in_boundaries():
             return self.attack(destination)
-        del CREATURES[self.tile]
+        del self.game.creatures[self.tile]
         self.tile = destination
         self.rect.x = 208 + 32 * (8 + self.tile.x)
         self.rect.y = 60 + 32 * (7 + self.tile.y)
-        CREATURES[destination] = self
+        self.game.creatures[destination] = self
 
     def attack(self, destination):
-        CREATURES[destination].take_damage(self.damage)
+        self.game.creatures[destination].take_damage(self.damage)
 
     def take_damage(self, number):
         self.health -= number
         if self.health < 0:
-            del CREATURES[self.tile]
+            del self.game.creatures[self.tile]
             self.erase()
 
     def ai_play(self):
-        nearest_pc = min( [c for c in CREATURES.values() if c.is_pc], 
+        nearest_pc = min( [c for c in self.game.creatures.values() if c.is_pc], 
                 key= lambda x: x.tile.dist(self.tile))
         self.move_or_attack(self.step_to(nearest_pc.tile))
 
 class HoverDisplay ():
     def __init__ (self):
-        self.portrait = display.SimpleSprite('portraits/Empty.png')
+        self.portrait = display.SimpleSprite('portraits/P1.png')
         self.portrait.rect.x, self.portrait.rect.y = 20, 60
         self.ui_health = display.SimpleSprite('icons/heart.png')
         self.ui_health.rect.x, self.ui_health.rect.y = 20, 120
@@ -135,9 +136,15 @@ class HoverDisplay ():
         self.portrait.animate(creature.portrait)
         self.gauge.set_size(68  * creature.health // creature.creaturedef['health'] * 2)
 
+    def erase_all(self):
+        self.portrait.erase()
+        self.ui_health.erase()
+        self.gauge.erase()
+
 class Game():
     def __init__(self):
         self.turn = 0
+        self.creatures = {}
         self.spawn_creatures()
         #Will be set by new turn, only here declaring
         self.active_pc = None
@@ -148,18 +155,18 @@ class Game():
         return self.pc_list[self.active]
 
     def spawn_creatures(self):
-        CREATURES[GameTile(0, 6)] = Creature(GameTile(0, 6), defs.PC1)
-        CREATURES[GameTile(0, 5)] = Creature(GameTile(0, 5), defs.PC2)
-        CREATURES[GameTile(0, -6)] = Creature(GameTile(0,-6), defs.MOB1)
+        self.creatures[GameTile(0, 6)] = Creature(self, GameTile(0, 6), defs.PC1)
+        self.creatures[GameTile(0, 5)] = Creature(self, GameTile(0, 5), defs.PC2)
+        self.creatures[GameTile(0, -6)] = Creature(self, GameTile(0,-6), defs.MOB1)
 
     def move_pc(self, tile):
         new_tile = self.active_pc.step_to(tile)
-        CREATURES[self.active_pc.tile].move_or_attack(new_tile)
+        self.creatures[self.active_pc.tile].move_or_attack(new_tile)
         self.new_turn()
 
     def new_turn(self):
         while True:
-            to_act = min(CREATURES.values(), key= lambda x: x.next_action)
+            to_act = min(self.creatures.values(), key= lambda x: x.next_action)
             if to_act.is_pc:
                 self.active_pc = to_act
                 return
@@ -167,19 +174,61 @@ class Game():
 
     def update(self, tile):
         cr = self.active_pc
-        if tile in CREATURES:
-            cr = CREATURES[tile]
+        if tile in self.creatures:
+            cr = self.creatures[tile]
         self.hover_display.update(cr)
 
-class GameInterface ():
-    def __init__ (self, game):
-        self.background = display.SimpleSprite('bg.png', layer=1)
-        self.game = game
+    def is_over(self):
+        return all((c.is_pc for c in self.creatures.values())) or all((not c.is_pc for c in self.creatures.values()))
+
+    def erase_all(self):
+        for c in self.creatures.values():
+            c.erase()
+        self.hover_display.erase_all()
+
+class Interface ():
+    def __init__(self, father, ui_sprite_name, keys=[]):
+        self.father = father
+        self.keys = keys
+        self.ui_sprite_name = ui_sprite_name
+        self.ui_sprite = display.SimpleSprite(ui_sprite_name, layer=1)
+        if self.father:
+            self.father.desactivate()
+        self.activate()
+
+    def desactivate(self):
+        DISPLAY.unsubscribe_click(self.on_click)
+        DISPLAY.unsubscribe_update(self.update)
+        for k, v in self.keys:
+            DISPLAY.unsubscribe_key(k, v)
+        self.ui_sprite.erase()
+
+
+    def activate(self):
+        DISPLAY.subscribe_click(self.on_click)
+        DISPLAY.subscribe_update(self.update)
+        for k, v in self.keys:
+            DISPLAY.subscribe_key(k, v)
+        self.ui_sprite = display.SimpleSprite(self.ui_sprite_name, layer=1)
+
+    def update(self, pos):
+        pass
+
+    def on_click(self, pos):
+        pass
+
+    def done(self):
+        if self.father:
+            self.father.activate()
+        else:
+            exit(0)
+
+class GameInterface (Interface):
+    def __init__ (self, father):
+        self.game = Game()
         self.board = {}
         self._add_board()
-        DISPLAY.subscribe_update(self.update)
-        DISPLAY.subscribe_key(K_ESCAPE, self.on_key)
-        DISPLAY.subscribe_click(self.on_click)
+        super(GameInterface, self).__init__(father, 'bg.png')
 
     def _add_board(self):
         center = GameTile(0,0) 
@@ -198,10 +247,11 @@ class GameInterface ():
         t = self.get_tile_for_mouse(mouse_pos)
         if t:
             self.game.move_pc(t)
-
-    def on_key(self, mouse_pos):
-        exit(0)
-
+        if self.game.is_over():
+            for tile in self.board.values():
+                tile.erase()
+            self.game.erase_all()
+            self.done()
 #
     def update(self, mouse_pos):
         for sprite in self.board.values():
@@ -214,17 +264,53 @@ class GameInterface ():
         if t:
             self.game.update(t)
     
-class MainMenu():
+class MainMenuInterface(Interface):
     def __init__(self):
-        self.background = display.SimpleSprite('menu.png')
-        DISPLAY.subscribe_key(K_RETURN, self.on_key)
-    def on_key(self, key):
-        game = Game()
-        gi = GameInterface(game)
-        DISPLAY.unsubscribe_key(K_RETURN, self.on_key)
-        self.background.erase()
+        super(MainMenuInterface, self).__init__(None, 'menu.png', keys = [
+            (K_ESCAPE, self.done),
+            (K_RETURN, self.start),
+            ])
+    def start(self, key):
+        WorldInterface(self)
+
+class WorldInterface(Interface):
+    def __init__(self, father):
+        self.world_map = {}
+        self.pc_tile = GameTile(0, 0)
+        super(WorldInterface, self).__init__(father, 'worldmap.png', keys = [
+            (K_KP4, self.go_sw),
+            (K_KP5, self.go_s),
+            (K_KP6, self.go_se),
+            (K_KP7, self.go_nw),
+            (K_KP8, self.go_n),
+            (K_KP9, self.go_ne)
+            ])
+
+    def go_s(self, _):
+        self.go(self.pc_tile.neighbours()[0])
+
+    def go_se(self, _):
+        self.go(self.pc_tile.neighbours()[1])
+
+    def go_ne(self, _):
+        self.go(self.pc_tile.neighbours()[2])
+
+    def go_n(self, _):
+        self.go(self.pc_tile.neighbours()[3])
+
+    def go_nw(self, _):
+        self.go(self.pc_tile.neighbours()[4])
+
+    def go_sw(self, _):
+        self.go(self.pc_tile.neighbours()[5])
+
+    def go(self, tile):
+        self.start_game()
+
+    def start_game(self):
+        gi = GameInterface(self)
 
 #this calls the 'main' function when this script is executed
 if __name__ == '__main__':
-    m = MainMenu()
+    m = MainMenuInterface()
     DISPLAY.main()

@@ -104,7 +104,7 @@ class Gauge(pygame.sprite.Sprite):
         self.image.fill(pygame.Color(self.color))
 
     def erase (self):
-        ALL_SPRITES[layer].remove (self)
+        ALL_SPRITES[self.layer].remove (self)
 
 class TextSprite (pygame.sprite.Sprite):
     """ Text sprites, can be re-used through set_text """

@@ -110,9 +110,9 @@ class TextSprite (pygame.sprite.Sprite):
     """ Text sprites, can be re-used through set_text """
     def __init__ (self, text, color, x=0, y=0, layer=5):
         pygame.sprite.Sprite.__init__(self) #call Sprite initializer
-        self.font = pygame.font.Font("data/vera/Vera.ttf", 8)
+        self.font = pygame.font.Font("data/font/Vera.ttf", 8)
         self.color = color
-        self.image = self.font.render(text, True, pygame.Color(color))
+        self.image = self.font.render(text, False, pygame.Color(color))
         (w, h) = self.font.size (text)
         self.image = pygame.transform.scale(self.image, (w * 2, h * 2)) 
         rect = self.image.get_rect()
@@ -121,7 +121,7 @@ class TextSprite (pygame.sprite.Sprite):
         ALL_SPRITES[self.layer].add (self)
 
     def set_text (self, text):
-        self.image = self.font.render (text, True, pygame.Color(self.color))
+        self.image = self.font.render (text, False, pygame.Color(self.color))
         (w, h) = self.font.size (text)
         self.image = pygame.transform.scale(self.image, (w * 2, h * 2)) 
         rect = self.image.get_rect()

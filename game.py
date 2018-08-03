@@ -234,6 +234,8 @@ class Game():
             if to_act.is_pc:
                 self.active_pc = to_act
                 return
+            if self.is_over():
+                break
             to_act.ai_play()
 
     def update(self, mouse_pos):

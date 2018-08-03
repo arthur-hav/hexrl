@@ -77,7 +77,8 @@ class Entity (SimpleSprite):
     def __init__ (self, game_tile, image, is_pc = False, **kwargs):
         self.tile = game_tile
         self.is_pc = is_pc
-        super(Entity, self).__init__('tiles/' + image + '.png', **kwargs)
+        self.image_name = 'tiles/' + image + '.png'
+        super(Entity, self).__init__(self.image_name, **kwargs)
         self.rect.x = 208 + 32 * (8 + self.tile.x)
         self.rect.y = 92 + 32 * (7 + self.tile.y)
 
@@ -95,6 +96,7 @@ class Creature():
         self.creaturedef = creaturedef
         self.entity = None
         self.game = None
+        self.frames = []
 
     def set_in_game(self, game, game_tile, next_action):
         self.entity = Entity(game_tile, self.creaturedef['image'], self.creaturedef['is_pc'])
@@ -108,6 +110,10 @@ class Creature():
         self.entity.erase()
         self.game = None
         self.entity = None
+
+    def update(self):
+        if self.frames:
+            self.entity.animate(self.frames.pop(0))
 
     def move_or_attack(self, destination):
         self.next_action += 1000 / self.speed
@@ -126,6 +132,7 @@ class Creature():
 
     def take_damage(self, number):
         self.health -= number
+        self.frames.extend(['tiles/Hit.png', self.entity.image_name])
         if self.health < 0:
             self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.entity.tile]
@@ -184,12 +191,22 @@ class Game():
     def __init__(self, pc_list, mob_list):
         self.turn = 0
         self.creatures = {}
+        self.board = {}
+        self._add_board()
         self.spawn_creatures(pc_list, mob_list)
         #Will be set by new turn, only here declaring
         self.active_pc = None
         self.new_turn()
         self.hover_display = HoverDisplay()
         self.log_display = LogDisplay()
+
+    def _add_board(self):
+        center = GameTile(0,0) 
+        for i in range(-10, 10):
+            for j in range(-10, 10):
+                tile = GameTile(i, j + (i % 2)/2)
+                if tile.in_boundaries():
+                    self.board[tile] = Entity(tile, 'Green1', layer=2)
 
     def active_pc(self):
         return self.pc_list[self.active]
@@ -219,11 +236,22 @@ class Game():
                 return
             to_act.ai_play()
 
-    def update(self, tile):
+    def update(self, mouse_pos):
+        tile = self.get_tile_for_mouse(mouse_pos)
         cr = self.active_pc
         if tile in self.creatures:
             cr = self.creatures[tile]
         self.hover_display.update(cr)
+        #
+        for cr in self.creatures.values():
+            cr.update()
+
+        for sprite in self.board.values():
+            sprite.animate('tiles/Green1.png')
+
+        #Highlight active player
+        if self.active_pc:
+            self.board[self.active_pc.entity.tile].animate('tiles/Green2.png')
 
     def is_over(self):
         return all((c.is_pc for c in self.creatures.values())) or all((not c.is_pc for c in self.creatures.values()))
@@ -231,14 +259,19 @@ class Game():
     def erase_all(self):
         for c in self.creatures.values():
             c.erase()
+        for tile in self.board.values():
+            tile.erase()
         self.hover_display.erase_all()
         self.log_display.erase_all()
+
+    def get_tile_for_mouse(self, mouse_pos):
+        for tile, sprite in self.board.items():
+            if sprite.rect.collidepoint(mouse_pos):
+                return tile
 
 class GameInterface (Interface):
     def __init__ (self, father):
         self.game = Game(father.pc_list, father.mob_list)
-        self.board = {}
-        self._add_board()
         super(GameInterface, self).__init__(father, father.display, 'bg.png', keys=[
             (K_KP4, self.go_sw),
             (K_KP5, self.go_s),
@@ -248,18 +281,7 @@ class GameInterface (Interface):
             (K_KP9, self.go_ne)
             ])
 
-    def _add_board(self):
-        center = GameTile(0,0) 
-        for i in range(-10, 10):
-            for j in range(-10, 10):
-                tile = GameTile(i, j + (i % 2)/2)
-                if tile.in_boundaries():
-                    self.board[tile] = Entity(tile, 'Green1', layer=2)
 
-    def get_tile_for_mouse(self, mouse_pos):
-        for tile, sprite in self.board.items():
-            if sprite.rect.collidepoint(mouse_pos):
-                return tile
 
     def on_click(self, mouse_pos):
         pass
@@ -285,20 +307,10 @@ class GameInterface (Interface):
     def go(self, tile):
         self.game.move_pc(tile)
         if self.game.is_over():
-            for tile in self.board.values():
-                tile.erase()
             self.game.erase_all()
             self.done()
 #
     def update(self, mouse_pos):
-        for sprite in self.board.values():
-            sprite.animate('tiles/Green1.png')
-
-        #Highlight active player
-        if self.game.active_pc:
-            self.board[self.game.active_pc.entity.tile].animate('tiles/Green2.png')
-        t = self.get_tile_for_mouse(mouse_pos)
-        if t:
-            self.game.update(t)
+        self.game.update(mouse_pos)
     
 

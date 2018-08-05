@@ -93,6 +93,8 @@ class TargetInterface(Interface, SimpleSprite):
         self.done()
     def update(self, mouse_pos):
         tile = self.father.game.arena.get_tile_for_mouse(mouse_pos)
+        for target in self.valid_targets:
+            self.father.game.arena.board[target].animate('tiles/Yellow.png')
         if tile:
             self.rect.x, self.rect.y = tile.display_location()
             self.display()
@@ -273,9 +275,6 @@ class Game(CascadeElement):
         self.display()
         self.new_turn()
 
-    def active_pc(self):
-        return self.pc_list[self.active]
-
     def get_valid_targets(self, creature, ability):
         valid_targets = [tile for tile in self.arena.board.keys() if ability.is_valid_target(creature, tile)]
         return valid_targets
@@ -295,8 +294,7 @@ class Game(CascadeElement):
             i += 2
 
     def move_pc(self, tile):
-        new_tile = self.active_pc.step_to(tile)
-        self.creatures[self.active_pc.tile].move_or_attack(new_tile)
+        self.creatures[self.active_pc.tile].move_or_attack(tile)
         self.new_turn()
 
     def new_turn(self):
@@ -375,6 +373,7 @@ class GameInterface (Interface):
         if valid_targets != [pc.tile]:
             t = TargetInterface(self, valid_targets, pc.abilities[0]['handler'])
             t.activate()
+            self.desactivate()
 
     def ability_two(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 2:
@@ -384,6 +383,7 @@ class GameInterface (Interface):
         if valid_targets != [pc.tile]:
             t = TargetInterface(self, valid_targets, pc.abilities[1]['handler'])
             t.activate()
+            self.desactivate()
 
     def ability_three(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 3:
@@ -393,16 +393,16 @@ class GameInterface (Interface):
         if valid_targets != [pc.tile]:
             t = TargetInterface(self, valid_targets, pc.abilities[2]['handler'])
             t.activate()
+            self.desactivate()
 
     def quit(self, _):
         exit(0)
 
     def on_return(self, defunct):
-        try:
-            if defunct.target:
-                defunct.handler.apply_ability(self.game.active_pc, defunct.target)
-        except Exception as e:
-            print(e)
+        if defunct.target:
+            time_spent = defunct.handler.apply_ability(self.game.active_pc, defunct.target)
+            self.game.active_pc.next_action += time_spent / self.game.active_pc.speed
+            self.game.new_turn()
 #
     def update(self, mouse_pos):
         self.game.update(mouse_pos)

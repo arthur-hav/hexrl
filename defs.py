@@ -5,12 +5,14 @@ class RangedDamageAbility():
 
     def is_valid_target(self, creature, target):
         return (creature.tile.dist(target) <= self.ability_range \
-                and target in creature.game.creatures)
+                and target in creature.game.creatures
+                and creature.game.creatures[target].is_pc != creature.is_pc)
 
     def apply_ability(self, creature, target):
         target_cr = creature.game.creatures[target]
         target_cr.take_damage(self.damage) 
         creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, target_cr.name, self.damage))
+        return 1000
 
 PC1 = {
     'portrait': 'P1.png',
@@ -46,8 +48,6 @@ PC3 = {
     }],
     'is_pc': True
 }
-
-
 
 MOB1 = {
     'portrait': 'P2.png',

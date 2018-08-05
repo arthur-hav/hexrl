@@ -106,3 +106,4 @@ venv.bak/
 # vim
 *.swp
 *.swo
+*.json

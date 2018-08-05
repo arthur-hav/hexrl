@@ -4,6 +4,8 @@ from pygame.locals import *
 import defs
 import choices
 import random
+import json
+import os
 
 class MainMenuInterface(Interface, CascadeElement):
     def __init__(self):
@@ -18,6 +20,10 @@ class MainMenuInterface(Interface, CascadeElement):
     def start(self, mouse_pos):
         self.erase()
         wi = WorldInterface(self)
+        if os.path.exists('save.json'):
+            wi.load_game('save.json')
+        else:
+            wi.new_game()
         wi.activate()
         wi.display()
         self.desactivate()
@@ -30,7 +36,7 @@ class InventoryDisplay(CascadeElement):
         self.worldinterface = worldinterface
         self.gold_icon = SimpleSprite('icons/gold.png')
         self.gold_icon.rect.x, self.gold_icon.rect.y = 754, 92
-        self.gold_stat = TextSprite(str(self.worldinterface.party_gold), '#ffffff', 786, 100)
+        self.gold_stat = TextSprite('', '#ffffff', 786, 100)
         self.subsprites = [self.gold_icon, self.gold_stat]
 
     def update(self, mouse_pos):
@@ -38,7 +44,6 @@ class InventoryDisplay(CascadeElement):
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
-        self.party_gold = 0
         self.inventory_display = InventoryDisplay(self)
         self.mob_list = []
         self.current_question = {}
@@ -51,21 +56,24 @@ class WorldInterface(Interface, CascadeElement):
             (K_KP1, lambda x: self.choose(0, x)),
             (K_KP2, lambda x: self.choose(1, x)),
             (K_KP3, lambda x: self.choose(2, x)),
-            (K_ESCAPE, lambda x: self.done()),
+            (K_ESCAPE, lambda x: self.save_game()),
             ])
-        self.pc_list = [
-            Creature(defs.PC1),
-            Creature(defs.PC2),
-            Creature(defs.PC3),
-            Creature(defs.PC2),
-            Creature(defs.PC1),
-        ]
-        self.pick()
 
     def on_return(self, defunct):
         if self.current_answer:
             self.current_answer['handler'].end(self)
         self.display()
+
+    def new_game(self):
+        self.party_gold = 0
+        self.pc_list = [
+            Creature('Fighter'),
+            Creature('Barbarian'),
+            Creature('Archer'),
+            Creature('Barbarian'),
+            Creature('Archer'),
+        ]
+        self.pick()
 
     def pick (self):
         if not any((pc.health > 0 for pc in self.pc_list)):
@@ -93,6 +101,21 @@ class WorldInterface(Interface, CascadeElement):
         gi = GameInterface(self)
         gi.activate()
         self.desactivate()
+
+    def save_game(self):
+        pc_dump = [pc.dict_dump()for pc in self.pc_list]
+        save = {'pcs':pc_dump, 'gold':self.party_gold}
+        with open('save.json', 'w') as f:
+            f.write(json.dumps(save))
+        self.erase()
+        self.done()
+
+    def load_game(self, filename):
+        with open(filename) as f:
+            d = json.loads(f.read())
+        self.party_gold = d['gold']
+        self.pc_list = [Creature.dict_load(pc) for pc in d['pcs']]
+        self.pick()
 
 #this calls the 'main' function when this script is executed
 if __name__ == '__main__':

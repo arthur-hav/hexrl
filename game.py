@@ -4,6 +4,7 @@ from math import *
 from pygame.locals import *
 import random
 import os.path
+import json
 
 class GameTile():
     CO = cos(pi/6)
@@ -50,7 +51,7 @@ class GameTile():
     def _dist_to_axis(self, d0, dx, dy, c):
         return abs(self._x * dy - self.y * dx + c) / (d0 or 1)
 
-    def ray_cast(self, other, go_through = False):
+    def raycast(self, other, go_through = False):
         """Used for los checks mostly"""
         CO = cos(pi/6)
         d0 = self.dist(other)
@@ -112,26 +113,27 @@ class SideHealthGauge(Gauge):
         self.displayed = False
         super(SideHealthGauge, self).__init__(4, 32, '#BB0008')
     def update(self):
-        self.height = (8 + 16 * self.creature.health) // self.creature.creaturedef['health'] * 2
+        self.height = (8 + 16 * self.creature.health) // self.creature.maxhealth * 2
         self.rect.x, self.rect.y = self.creature.tile.display_location()
         self.rect.y += 32 - self.height
         self.set_height(self.height)
-        if self.creature.health == self.creature.creaturedef['health']:
+        if self.creature.health == self.creature.maxhealth:
             self.set_height(0)
 
 class Creature(SimpleSprite, CascadeElement):
-    def __init__ (self, creaturedef):
-        for k, v in creaturedef.items():
+    def __init__ (self, defkey):
+        for k, v in defs.DEFS[defkey].items():
             setattr(self, k, v)
-        self.creaturedef = creaturedef
+        self.defkey = defkey
         self.gauge = SideHealthGauge(self)
+        self.maxhealth = self.health
         self.frames = []
-        SimpleSprite.__init__(self, os.path.join('tiles', self.creaturedef['image_name'])) 
+        SimpleSprite.__init__(self, os.path.join('tiles', defs.DEFS[defkey]['image_name'])) 
         self.subsprites = [self.gauge]
 
     def set_in_game(self, game, game_tile, next_action):
         self.tile = game_tile
-        self.rect.move_ip(*self.tile.display_location())
+        self.rect.x, self.rect.y = self.tile.display_location()
         self.game = game
         self.game.creatures[game_tile] = self
         self.next_action = next_action
@@ -181,6 +183,16 @@ class Creature(SimpleSprite, CascadeElement):
         CascadeElement.erase(self)
         SimpleSprite.erase(self)
 
+    def dict_dump(self):
+        return {
+            'health':self.health, 
+            'defkey':self.defkey
+            }
+    @staticmethod 
+    def dict_load(data):
+        c = Creature(data['defkey'])
+        c.health = data['health']
+        return c
 
 class InfoDisplay (CascadeElement):
     def __init__ (self, basex, basey):
@@ -203,7 +215,7 @@ class InfoDisplay (CascadeElement):
             return
         self.portrait.animate(os.path.join('portraits', creature.portrait))
         self.damage_stat.set_text(str(creature.damage))
-        self.health_stat.set_text('%s/%s' % (str(creature.health), str(creature.creaturedef['health'])))
+        self.health_stat.set_text('%s/%s' % (str(creature.health), str(creature.maxhealth)))
         self.speed_stat.set_text(str(creature.speed))
         self.display()
 
@@ -369,31 +381,34 @@ class GameInterface (Interface):
         if len(self.game.active_pc.abilities) < 1:
             return
         pc = self.game.active_pc
-        valid_targets = self.game.get_valid_targets(pc, pc.abilities[0]['handler'])
-        if valid_targets != [pc.tile]:
-            t = TargetInterface(self, valid_targets, pc.abilities[0]['handler'])
-            t.activate()
-            self.desactivate()
+        self._ability(pc, pc.abilities[0]['handler'])
 
     def ability_two(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 2:
             return
         pc = self.game.active_pc
-        valid_targets = self.game.get_valid_targets(pc, pc.abilities[1]['handler'])
-        if valid_targets != [pc.tile]:
-            t = TargetInterface(self, valid_targets, pc.abilities[1]['handler'])
-            t.activate()
-            self.desactivate()
+        self._ability(pc, pc.abilities[1]['handler'])
 
     def ability_three(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 3:
             return
         pc = self.game.active_pc
-        valid_targets = self.game.get_valid_targets(pc, pc.abilities[2]['handler'])
+        self._ability(pc, pc.abilities[2]['handler'])
+
+    def _ability(self, pc, handler):
+        valid_targets = self.game.get_valid_targets(pc, handler)
+        if not valid_targets:
+            self.game.log_display.push_text('No valid target.')
+            return
         if valid_targets != [pc.tile]:
-            t = TargetInterface(self, valid_targets, pc.abilities[2]['handler'])
+            t = TargetInterface(self, valid_targets, handler)
             t.activate()
             self.desactivate()
+        else:
+            time_spent = handler.apply_ability(self.game.active_pc, self.game.active_pc.tile)
+            self.game.active_pc.next_action += time_spent / self.game.active_pc.speed
+            self.game.new_turn()
+
 
     def quit(self, _):
         exit(0)

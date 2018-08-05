@@ -47,10 +47,10 @@ RANDOM_LIST = [
                 'text': 'Fight', 
                 'handler': FightOption,
                 'mobs': [
-                    (defs.MOB1, (0, -6)),
-                    (defs.MOB1, (0, 6)),
-                    (defs.MOB1, (6, 0)),
-                    (defs.MOB1, (-6, 0)),
+                    ('Gobelin', (0, -6)),
+                    ('Gobelin', (0, 6)),
+                    ('Gobelin', (6, 0)),
+                    ('Gobelin', (-6, 0)),
                 ],
             }
         ],

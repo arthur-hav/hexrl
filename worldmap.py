@@ -1,76 +1,102 @@
 from game import GameTile, GameInterface, Creature
-from display import Display, Interface, TextSprite
+from display import Display, Interface, TextSprite, SimpleSprite, CascadeElement, DISPLAY
 from pygame.locals import *
 import defs
 import choices
 import random
 
-class MainMenuInterface(Interface):
-    def __init__(self, display):
-        super(MainMenuInterface, self).__init__(None, display, 'menu.png', keys = [
-            (K_ESCAPE, self.done),
+class MainMenuInterface(Interface, CascadeElement):
+    def __init__(self):
+        self.bg = SimpleSprite('menu.png')
+        self.hello = TextSprite('Press <Enter> to start the game...', '#ffffff', 320, 280)
+        self.subsprites = [self.bg, self.hello]
+        Interface.__init__(self, None, keys = [
+            (K_ESCAPE, lambda x: self.done()),
             (K_RETURN, self.start),
             ])
 
-    def start(self, key):
-        self.hello.erase()
-        WorldInterface(self)
+    def start(self, mouse_pos):
+        self.erase()
+        wi = WorldInterface(self)
+        wi.activate()
+        wi.display()
+        self.desactivate()
 
-    def activate(self):
-        super(MainMenuInterface, self).activate()
-        self.hello = TextSprite('Press <Enter> to start the game...', '#ffffff', 320, 280)
+    def on_return(self, defunct):
+        self.display()
 
+class InventoryDisplay(CascadeElement):
+    def __init__(self, worldinterface):
+        self.worldinterface = worldinterface
+        self.gold_icon = SimpleSprite('icons/gold.png')
+        self.gold_icon.rect.x, self.gold_icon.rect.y = 754, 92
+        self.gold_stat = TextSprite(str(self.worldinterface.party_gold), '#ffffff', 786, 100)
+        self.subsprites = [self.gold_icon, self.gold_stat]
 
+    def update(self, mouse_pos):
+        self.gold_stat.set_text(str(self.worldinterface.party_gold))
 
-class WorldInterface(Interface):
+class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
-        self.pc_list = [
-            Creature(defs.PC1),
-            Creature(defs.PC2),
-            Creature(defs.PC1),
-            Creature(defs.PC2),
-            Creature(defs.PC1),
-        ]
         self.party_gold = 0
+        self.inventory_display = InventoryDisplay(self)
         self.mob_list = []
-        super(WorldInterface, self).__init__(father, father.display, 'worldmap.png', keys = [
+        self.current_question = {}
+        self.current_answer = {}
+        self.bg = SimpleSprite('menu.png')
+        self.current_text = TextSprite('', '#ffffff', 320, 220)
+        self.choice_text = TextSprite('', '#ffffff', 320, 400)
+        self.subsprites = [self.bg, self.current_text, self.choice_text, self.inventory_display]
+        Interface.__init__(self, father, keys = [
             (K_KP1, lambda x: self.choose(0, x)),
             (K_KP2, lambda x: self.choose(1, x)),
             (K_KP3, lambda x: self.choose(2, x)),
+            (K_ESCAPE, lambda x: self.done()),
             ])
+        self.pc_list = [
+            Creature(defs.PC1),
+            Creature(defs.PC2),
+            Creature(defs.PC3),
+            Creature(defs.PC2),
+            Creature(defs.PC1),
+        ]
+        self.pick()
 
-    def activate(self):
-        super(WorldInterface, self).activate()
-        self.current_choice = random.choice(choices.RANDOM_LIST)
+    def on_return(self, defunct):
+        if self.current_answer:
+            self.current_answer['handler'].end(self)
+        self.display()
+
+    def pick (self):
         if not any((pc.health > 0 for pc in self.pc_list)):
-            self.current_choice = choices.GAMEOVER
+            self.current_question = choices.GAMEOVER
+        else:
+            self.current_question = random.choice(choices.RANDOM_LIST)
+        self.display_choices()
 
-        self.current_text = TextSprite(self.current_choice['text'], '#ffffff', 320, 280)
-        self.choices_text = [ TextSprite("%d - %s" % (key + 1, self.current_choice['choices'][key]['text']),
-            '#ffffff', 320, 320 + 20 * key) for key in range(len(self.current_choice['choices'])) ]
-
+    def display_choices(self):
+        choice_text = '\n'.join( ["%d - %s" % (key + 1, val['text']) for key, val in enumerate(self.current_question['choices'])])
+        self.choice_text.set_text(choice_text)
+        self.current_text.set_text(self.current_question['text'])
 
     def choose(self, key, tile):
-        if key >= len(self.current_choice['choices']):
+        if key >= len(self.current_question['choices']):
             return
-        if self.current_choice['choices'][key]['type'] == 'fight':
-            self.mob_list = self.current_choice['choices'][key]['mobs']
-            self.start_game()
-        if self.current_choice['choices'][key]['type'] == 'gameover':
-            self.erase_all()
-            self.done()
+        self.current_answer = self.current_question['choices'][key]
+        self.current_answer['handler'].start(self)
 
-    def erase_all(self):
-        self.current_text.erase()
-        for choice in self.choices_text:
-            choice.erase()
+    def update(self, mouse_pos):
+        self.inventory_display.update(mouse_pos)
 
     def start_game(self):
-        self.erase_all()
+        self.erase()
         gi = GameInterface(self)
+        gi.activate()
+        self.desactivate()
 
 #this calls the 'main' function when this script is executed
 if __name__ == '__main__':
-    d = Display()
-    m = MainMenuInterface(d)
-    d.main()
+    m = MainMenuInterface()
+    m.activate()
+    m.display()
+    DISPLAY.main()

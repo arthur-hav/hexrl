@@ -172,31 +172,54 @@ class Gauge(pygame.sprite.Sprite):
     def erase (self):
         DISPLAY.sprites.remove (self)
 
-class TextSprite (pygame.sprite.Sprite):
+class TextSprite ():
     """ Text sprites, can be re-used through set_text """
-    def __init__ (self, text, color, x=0, y=0):
-        pygame.sprite.Sprite.__init__(self) #call Sprite initializer
+    def __init__ (self, text, color, x=0, y=0, maxlen=None):
         self.font = pygame.font.Font("data/font/Vera.ttf", 8)
         self.color = color
-        self.image = self.font.render(text, False, pygame.Color(color))
-        (w, h) = self.font.size (text)
-        self.image = pygame.transform.scale(self.image, (w * 2, h * 2)) 
-        rect = self.image.get_rect()
-        self.rect = pygame.Rect (x, y, w, h)
+        self.maxlen = maxlen
+        self.x = x
+        self.y = y
+        self.textsprites = []
+        self.is_displayed = False
+        self._render(text)
 
-    def display(self):
-        DISPLAY.sprites.add (self)
+    def _render(self, text):
+        words = text.split(' ')
+        i = 0
+        j = 0
+        for word in words:
+            sprite = pygame.sprite.Sprite()
+            sprite.image = self.font.render(word, False, pygame.Color(self.color))
+            (w, h) = self.font.size (word)
+            sprite.image = pygame.transform.scale(sprite.image, (w * 2, h * 2)) 
+            rect = sprite.image.get_rect()
+            sprite.rect = pygame.Rect (self.x + i, self.y + j, w, h)
+            self.textsprites.append(sprite)
+            i += w * 2 + 6
+            if self.maxlen and i > self.maxlen:
+                i = 0
+                j += 16
 
     def set_text (self, text):
-        self.image = self.font.render (text, False, pygame.Color(self.color))
-        (w, h) = self.font.size (text)
-        self.image = pygame.transform.scale(self.image, (w * 2, h * 2)) 
-        rect = self.image.get_rect()
+        if self.is_displayed:
+            self.erase()
+            self.is_displayed = True
+        if self.textsprites:
+            self.textsprites = []
+        self._render(text)
+        if self.is_displayed:
+            self.display()
 
-    def erase (self):
-        DISPLAY.sprites.remove (self)
+    def display(self):
+        self.is_displayed = True
+        for sprite in self.textsprites:
+            DISPLAY.sprites.add (sprite)
 
-
+    def erase(self):
+        self.is_displayed = False
+        for sprite in self.textsprites:
+            DISPLAY.sprites.remove (sprite)
 
 class Interface ():
     """Represents a scene, or a window modal, listening to events and

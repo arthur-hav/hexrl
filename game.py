@@ -1,5 +1,5 @@
 from display import Interface, TextSprite, SimpleSprite, Gauge, CascadeElement
-import defs
+from creatures import Creature
 from math import *
 from pygame.locals import *
 import random
@@ -107,96 +107,11 @@ class TargetInterface(Interface, SimpleSprite):
             self.erase()
             self.done()
 
-class SideHealthGauge(Gauge):
-    def __init__(self, creature):
-        self.creature = creature
-        self.displayed = False
-        super(SideHealthGauge, self).__init__(4, 32, '#BB0008')
-    def update(self):
-        self.height = (8 + 16 * self.creature.health) // self.creature.maxhealth * 2
-        self.rect.x, self.rect.y = self.creature.tile.display_location()
-        self.rect.y += 32 - self.height
-        self.set_height(self.height)
-        if self.creature.health == self.creature.maxhealth:
-            self.set_height(0)
 
-class Creature(SimpleSprite, CascadeElement):
-    def __init__ (self, defkey):
-        for k, v in defs.DEFS[defkey].items():
-            setattr(self, k, v)
-        self.defkey = defkey
-        self.gauge = SideHealthGauge(self)
-        self.maxhealth = self.health
-        self.frames = []
-        SimpleSprite.__init__(self, os.path.join('tiles', defs.DEFS[defkey]['image_name'])) 
-        self.subsprites = [self.gauge]
-
-    def set_in_game(self, game, game_tile, next_action):
-        self.tile = game_tile
-        self.rect.x, self.rect.y = self.tile.display_location()
-        self.game = game
-        self.game.creatures[game_tile] = self
-        self.next_action = next_action
-
-    def update(self):
-        if self.frames:
-            self.animate(self.frames.pop(0))
-        self.gauge.update()
-
-    ### Below this : only valid if previously set_in_game
-
-    def step_to(self, target):
-        return min(self.tile.neighbours(), key = lambda x: x.dist(target))
-
-    def move_or_attack(self, destination):
-        self.next_action += 1000 / self.speed
-        if destination in self.game.creatures or not destination.in_boundaries():
-            return self.attack(destination)
-        del self.game.creatures[self.tile]
-        self.tile = destination
-        self.rect.x, self.rect.y = self.tile.display_location()
-        self.game.creatures[destination] = self
-
-    def attack(self, destination):
-        creature = self.game.creatures[destination]
-        creature.take_damage(self.damage)
-        self.game.log_display.push_text("%s hits %s for %d damage." % (self.name, creature.name, self.damage))
-
-    def take_damage(self, number):
-        self.health -= number
-        self.frames.extend(['tiles/Hit.png', 'tiles/' + self.image_name])
-        if self.health < 0:
-            self.game.log_display.push_text("%s dies." % (self.name))
-            del self.game.creatures[self.tile]
-            self.erase()
-
-    def ai_play(self):
-        nearest_pc = min( [c for c in self.game.creatures.values() if c.is_pc], 
-                key= lambda x: x.tile.dist(self.tile))
-        self.move_or_attack(self.step_to(nearest_pc.tile))
-
-    def display(self):
-        CascadeElement.display(self)
-        SimpleSprite.display(self)
-
-    def erase(self):
-        CascadeElement.erase(self)
-        SimpleSprite.erase(self)
-
-    def dict_dump(self):
-        return {
-            'health':self.health, 
-            'defkey':self.defkey
-            }
-    @staticmethod 
-    def dict_load(data):
-        c = Creature(data['defkey'])
-        c.health = data['health']
-        return c
 
 class InfoDisplay (CascadeElement):
     def __init__ (self, basex, basey):
-        self.portrait = SimpleSprite('portraits/P1.png')
+        self.portrait = SimpleSprite('portraits/Fighter.png')
         self.portrait.rect.x, self.portrait.rect.y = basex, basey
         self.health = SimpleSprite('icons/heart.png')
         self.health.rect.move_ip(basex + 64, basey)
@@ -207,7 +122,8 @@ class InfoDisplay (CascadeElement):
         self.speed = SimpleSprite('icons/quickness.png')
         self.speed.rect.move_ip(basex + 64, basey + 64)
         self.speed_stat = TextSprite('', '#ffffff', basex + 100, basey + 70)
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat]
+        self.description = TextSprite('', '#ffffff', basex, basey + 102)
+        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description]
 
     def update(self, creature):
         if not creature:
@@ -217,6 +133,7 @@ class InfoDisplay (CascadeElement):
         self.damage_stat.set_text(str(creature.damage))
         self.health_stat.set_text('%s/%s' % (str(creature.health), str(creature.maxhealth)))
         self.speed_stat.set_text(str(creature.speed))
+        self.description.set_text(str(getattr(creature, 'description', '')))
         self.display()
 
 class AbilityDisplay (CascadeElement):
@@ -244,6 +161,16 @@ class LogDisplay (CascadeElement):
         self.lines.append(text)
         for line, sprite in zip(self.lines[-4:], self.line_sprites):
             sprite.set_text(line)
+            print('push', sprite, sprite.is_displayed)
+
+    def display(self):
+        super().display()
+        for sprite in self.line_sprites:
+            print('disp', sprite, sprite.is_displayed)
+    def erase(self):
+        super().erase()
+        for sprite in self.line_sprites:
+            print('erase', sprite.is_displayed)
 
 class Arena(CascadeElement):
     def __init__(self, game):
@@ -293,7 +220,7 @@ class Game(CascadeElement):
 
     def spawn_creatures(self, pcs, mobs):
         i = 0
-        for pc, gt in zip(pcs, [(0, 1), (1, 1.5), (-1, 1.5), (2, 2), (-2, 2)]):
+        for pc, gt in zip(pcs, [(0, 6), (1, 6.5), (-1, 6.5), (2, 6), (-2, 6)]):
             if pc.health > 0:
                 pc.set_in_game(self, GameTile(*gt), i / 100)
                 self.subsprites.append(pc)

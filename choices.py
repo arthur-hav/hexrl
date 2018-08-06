@@ -1,4 +1,3 @@
-import defs
 import random
 
 
@@ -48,14 +47,26 @@ RANDOM_LIST = [
                 'handler': FightOption,
                 'mobs': [
                     ('Gobelin', (0, -6)),
-                    ('Gobelin', (0, 6)),
                     ('Gobelin', (6, 0)),
                     ('Gobelin', (-6, 0)),
                 ],
             }
         ],
     },
-    REWARD
+    {
+        'text':"You find a pack of undead creatures. They are willing to make you join their army.", 
+        'choices': [{
+                'text': 'Fight', 
+                'handler': FightOption,
+                'mobs': [
+                    ('Necromancer', (0, -7)),
+                    ('Skeleton', (0, -6)),
+                    ('Skeleton', (1, -5.5)),
+                    ('Skeleton', (-1, -5.5)),
+                ],
+            }
+        ],
+    },
 ]
 
 GAMEOVER = {

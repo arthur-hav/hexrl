@@ -1,7 +1,6 @@
 from game import GameTile, GameInterface, Creature
 from display import Display, Interface, TextSprite, SimpleSprite, CascadeElement, DISPLAY
 from pygame.locals import *
-import defs
 import choices
 import random
 import json
@@ -49,7 +48,7 @@ class WorldInterface(Interface, CascadeElement):
         self.current_question = {}
         self.current_answer = {}
         self.bg = SimpleSprite('menu.png')
-        self.current_text = TextSprite('', '#ffffff', 320, 220)
+        self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
         self.choice_text = TextSprite('', '#ffffff', 320, 400)
         self.subsprites = [self.bg, self.current_text, self.choice_text, self.inventory_display]
         Interface.__init__(self, father, keys = [

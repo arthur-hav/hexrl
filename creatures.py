@@ -1,6 +1,8 @@
 from display import SimpleSprite, CascadeElement, Gauge
 import os
 import random
+import math
+
 
 class SideHealthGauge(Gauge):
     def __init__(self, creature):
@@ -8,7 +10,7 @@ class SideHealthGauge(Gauge):
         self.displayed = False
         super(SideHealthGauge, self).__init__(4, 32, '#BB0008')
     def update(self):
-        self.height = (8 + 16 * self.creature.health) // self.creature.maxhealth * 2
+        self.height = math.ceil((16 * self.creature.health) // self.creature.maxhealth) * 2
         self.rect.x, self.rect.y = self.creature.tile.display_location()
         self.rect.y += 32 - self.height
         self.set_height(self.height)
@@ -23,8 +25,9 @@ class Creature(SimpleSprite, CascadeElement):
         self.gauge = SideHealthGauge(self)
         self.maxhealth = self.health
         self.frames = []
-        SimpleSprite.__init__(self, os.path.join('tiles', DEFS[defkey]['image_name'])) 
+        SimpleSprite.__init__(self, DEFS[defkey]['image_name']) 
         self.subsprites = [self.gauge]
+        self.ability_cooldown = [0 for _ in self.abilities]
 
     def set_in_game(self, game, game_tile, next_action):
         self.tile = game_tile
@@ -44,36 +47,61 @@ class Creature(SimpleSprite, CascadeElement):
         return min(self.tile.neighbours(), key = lambda x: x.dist(target))
 
     def move_or_attack(self, destination):
-        self.next_action += 1000 / self.speed
-        if destination in self.game.creatures or not destination.in_boundaries():
+        if not destination.in_boundaries():
+            return
+        if destination in self.game.creatures and self.is_pc != self.game.creatures[destination].is_pc:
             return self.attack(destination)
-        del self.game.creatures[self.tile]
+        elif destination in self.game.creatures:
+            #Swap places
+            del self.game.creatures[self.tile]
+            self.game.creatures[destination].move_or_attack(self.tile)
+        else:
+            del self.game.creatures[self.tile]
         self.tile = destination
         self.rect.x, self.rect.y = self.tile.display_location()
         self.game.creatures[destination] = self
+        self.next_action += 1000 / self.speed
+        if self.is_pc:
+            self.game.new_turn()
 
     def attack(self, destination):
         creature = self.game.creatures[destination]
         creature.take_damage(self.damage)
         self.game.log_display.push_text("%s hits %s for %d damage." % (self.name, creature.name, self.damage))
+        self.next_action += 1000 / self.speed
+        if self.is_pc:
+            self.game.new_turn()
+
+    def use_ability(self, ability, target):
+        ability.apply_ability(self, target)
+        self.next_action += 1000 / self.speed
+        # Since cooldown is decreased before action, we must add +1 so values are coherent
+        # ie a cooldown of 1 is =/= from a cooldown of 0
+        self.ability_cooldown[ self.abilities.index(ability) ] = ability.cooldown + 1
+        if self.is_pc:
+            self.game.new_turn()
 
     def take_damage(self, number):
         self.health -= number
-        self.frames.extend(['tiles/Hit.png', 'tiles/' + self.image_name])
-        if self.health < 0:
+        self.frames.extend(['tiles/Hit.png', self.image_name])
+        if self.health <= 0:
             self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.tile]
             self.erase()
 
+    def get_valid_targets(self, creature, ability):
+        valid_targets = [tile for tile in self.game.arena.board.keys() if ability.is_valid_target(self, tile)]
+        return valid_targets
+
     def ai_play(self):
         nearest_pc = min( [c for c in self.game.creatures.values() if c.is_pc], 
                 key= lambda x: x.tile.dist(self.tile))
-        if self.abilities and random.random() > 0.6:
-            ability = random.choice(self.abilities)['handler']
-            valid_targets = self.game.get_valid_targets(self, ability)
+        if self.abilities:
+            ability_num = random.randint(0, len(self.abilities) - 1)
+        if self.abilities and self.ability_cooldown[ability_num] == 0:
+            valid_targets = self.get_valid_targets(self, self.abilities[ability_num])
             target = random.choice(valid_targets)
-            time_spent = ability.apply_ability(self, target)
-            self.next_action += time_spent / self.speed
+            self.use_ability(self.abilities[ability_num], target)
         else:
             self.move_or_attack(self.step_to(nearest_pc.tile))
 
@@ -96,18 +124,27 @@ class Creature(SimpleSprite, CascadeElement):
         c.health = data['health']
         return c
 
-class RangedDamageAbility():
-    def __init__(self, ability_range, damage, need_los = True):
-        self.ability_range = ability_range
-        self.damage = damage
-        self.need_los = need_los
+class Ability():
+    def __init__(self, name, image_name, **kwargs):
+        self.name = name
+        self.image_name = image_name
+        self.need_los = False
+        self.cooldown = 0
+        self.ability_range = 0
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
-    def is_valid_target(self, creature, target):
+    def range_hint(self, creature, target):
         if self.need_los:
             for tile in creature.tile.raycast(target):
                 if tile in creature.game.creatures and tile != target:
                     return False
-        return creature.tile.dist(target) <= self.ability_range \
+        return creature.tile.dist(target) <= self.ability_range + 0.25
+
+
+class DamageAbility(Ability):
+    def is_valid_target(self, creature, target):
+        return self.range_hint(creature, target) \
                 and target in creature.game.creatures \
                 and creature.game.creatures[target].is_pc != creature.is_pc
 
@@ -115,14 +152,9 @@ class RangedDamageAbility():
         target_cr = creature.game.creatures[target]
         target_cr.take_damage(self.damage) 
         creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, target_cr.name, self.damage))
-        return 1000
+        return self.cooldown
 
-class NovaAbility():
-    def __init__(self, ability_range, damage, need_los = False):
-        self.ability_range = ability_range
-        self.damage = damage
-        self.need_los = need_los
-
+class NovaAbility(Ability):
     def is_valid_target(self, creature, target):
         return target == creature.tile
 
@@ -131,69 +163,53 @@ class NovaAbility():
             if creature.tile.dist(cr.tile) < self.ability_range and creature.is_pc != cr.is_pc:
                 cr.take_damage(self.damage)
                 creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, cr.name, self.damage))
-        return 1000
 
-class Invocation():
-    def __init__(self, defkey, ability_range = 3):
-        self.ability_range = ability_range
-        self.defkey = defkey
+class Invocation(Ability):
     def is_valid_target(self, creature, target):
-        return creature.tile.dist(target) <= self.ability_range \
+        return self.range_hint(creature, target) \
                 and target not in creature.game.creatures
+
     def apply_ability(self, creature, target):
         c = Creature(self.defkey)
         c.set_in_game(creature.game, target, creature.next_action + 100)
         c.is_pc = creature.is_pc
         c.display()
         creature.game.log_display.push_text("%s raises %s !" % (creature.name, c.name))
-        return 1000
 
 DEFS = {
     'Fighter': {
         'portrait': 'Fighter.png',
-        'image_name': 'Fighter.png',
+        'image_name': 'tiles/Fighter.png',
         'health': 100,
         'damage': 15,
         'speed': 10,
         'name': 'Fighter',
-        'abilities': [{ 
-            'name': 'Raise undead',
-            'image_name':'icons/skull.png',
-            'handler': Invocation('Skeleton')
-        }],
+        'abilities': [],
         'is_pc': True
     },
     'Barbarian': {
         'portrait': 'Barbarian.png',
-        'image_name': 'Barbarian.png',
+        'image_name': 'tiles/Barbarian.png',
         'health': 80,
         'damage': 18,
         'speed': 10,
         'is_pc': True,
         'name': 'Barbarian',
-        'abilities': [{
-            'name': 'cleave',
-            'image_name': 'icons/cleave.png',
-            'handler': NovaAbility(1.1, 14)
-        }]
+        'abilities': [NovaAbility(name = 'Cleave', image_name='icons/cleave.png', ability_range=1.01, damage=14)]
     },
     'Archer': {
         'portrait': 'Archer.png',
-        'image_name': 'Archer.png',
+        'image_name': 'tiles/Archer.png',
         'health': 80,
         'damage': 10,
         'speed': 11,
         'name': 'Archer',
-        'abilities': [{ 
-            'name': 'arrow',
-            'image_name': 'icons/arrow.png',
-            'handler': RangedDamageAbility(5, 10)
-        }],
+        'abilities': [ DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damage = 10, need_los = True) ],
         'is_pc': True
     },
     'Gobelin': {
         'portrait': 'Gobelin.png',
-        'image_name': 'Gobelin.png',
+        'image_name': 'tiles/Gobelin.png',
         'description': 'Fast.',
         'health': 50,
         'damage': 8,
@@ -204,7 +220,7 @@ DEFS = {
     },
     'Skeleton': {
         'portrait': 'Skeleton.png',
-        'image_name': 'Skeleton.png',
+        'image_name': 'tiles/Skeleton.png',
         'description': 'Dangerous in great numbers.',
         'health': 65,
         'damage': 7,
@@ -215,17 +231,13 @@ DEFS = {
     },
     'Necromancer': {
         'portrait': 'Necromancer.png',
-        'image_name': 'Necromancer.png',
+        'image_name': 'tiles/Necromancer.png',
         'health': 70,
         'damage': 8,
         'speed': 8,
         'name': 'Necromancer',
         'description': 'Can raise undead',
-        'abilities': [{ 
-            'name': 'Raise undead',
-            'image_name':'icons/skull.png',
-            'handler': Invocation('Skeleton')
-        }],
+        'abilities': [ Invocation(name='Raise undead', image_name='icons/skull.png',  defkey='Skeleton', ability_range=3, cooldown=2) ],
         'is_pc': False
     }
 }

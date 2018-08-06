@@ -37,9 +37,21 @@ class InventoryDisplay(CascadeElement):
         self.gold_icon.rect.x, self.gold_icon.rect.y = 754, 92
         self.gold_stat = TextSprite('', '#ffffff', 786, 100)
         self.subsprites = [self.gold_icon, self.gold_stat]
+        self.health_stats = []
+        self.pc_icons = []
+        for i in range(5):
+            pc_tile = SimpleSprite('tiles/Skeleton.png')
+            pc_tile.rect.x, pc_tile.rect.y = 754, 124 + 32 * i
+            pc_health_stat = TextSprite('', '#ffffff', 786, 132 + 32 * i)
+            self.health_stats.append(pc_health_stat)
+            self.pc_icons.append(pc_tile)
+            self.subsprites.extend([pc_tile, pc_health_stat])
 
     def update(self, mouse_pos):
         self.gold_stat.set_text(str(self.worldinterface.party_gold))
+        for i, pc in enumerate(self.worldinterface.pc_list):
+            self.health_stats[i].set_text("%s/%s" % (pc.health, pc.maxhealth))
+            self.pc_icons[i].animate(pc.image_name)
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):

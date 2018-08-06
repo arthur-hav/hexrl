@@ -107,25 +107,27 @@ class TargetInterface(Interface, SimpleSprite):
             self.erase()
             self.done()
 
-
-
 class InfoDisplay (CascadeElement):
     def __init__ (self, basex, basey):
         self.portrait = SimpleSprite('portraits/Fighter.png')
         self.portrait.rect.x, self.portrait.rect.y = basex, basey
+
+        self.description = TextSprite('', '#ffffff', basex, basey + 192, maxlen=120)
+
         self.health = SimpleSprite('icons/heart.png')
-        self.health.rect.move_ip(basex + 64, basey)
-        self.health_stat = TextSprite('', '#ffffff', basex + 100, basey + 6)
+        self.health.rect.move_ip(basex, basey + 224)
+        self.health_stat = TextSprite('', '#ffffff', basex + 36, basey + 228)
         self.damage = SimpleSprite('icons/sword.png')
-        self.damage.rect.move_ip(basex + 64, basey + 32)
-        self.damage_stat = TextSprite('', '#ffffff', basex + 100, basey + 38)
+        self.damage.rect.move_ip(basex, basey + 256)
+        self.damage_stat = TextSprite('', '#ffffff', basex + 36, basey + 260)
         self.speed = SimpleSprite('icons/quickness.png')
-        self.speed.rect.move_ip(basex + 64, basey + 64)
-        self.speed_stat = TextSprite('', '#ffffff', basex + 100, basey + 70)
-        self.description = TextSprite('', '#ffffff', basex, basey + 102)
+        self.speed.rect.move_ip(basex, basey + 288)
+        self.speed_stat = TextSprite('', '#ffffff', basex + 36, basey + 292)
+        self.ability_display = AbilityDisplay(basex, basey + 320)
         self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description]
 
     def update(self, creature):
+        self.ability_display.update(creature)
         if not creature:
             self.erase()
             return
@@ -137,13 +139,19 @@ class InfoDisplay (CascadeElement):
         self.display()
 
 class AbilityDisplay (CascadeElement):
+    def __init__ (self, basex, basey):
+        super().__init__()
+        self.basex = basex
+        self.basey = basey
     def update(self, creature):
         self.erase()
         self.subsprites = []
-        for ability in creature.abilities:
-            sprite = SimpleSprite(ability['image_name'])
-            sprite.rect.move_ip(18,450)
+        for i, ability in enumerate(creature.abilities):
+            sprite = SimpleSprite(ability.image_name)
+            sprite.rect.move_ip(self.basex , self.basey + 32 * i)
             self.subsprites.append(sprite)
+            text_sprite = TextSprite(ability.name, '#ffffff', self.basex + 38, self.basey + 4 + 32 * i)
+            self.subsprites.append(text_sprite)
         self.display()
 
 class LogDisplay (CascadeElement):
@@ -161,16 +169,25 @@ class LogDisplay (CascadeElement):
         self.lines.append(text)
         for line, sprite in zip(self.lines[-4:], self.line_sprites):
             sprite.set_text(line)
-            print('push', sprite, sprite.is_displayed)
 
-    def display(self):
-        super().display()
-        for sprite in self.line_sprites:
-            print('disp', sprite, sprite.is_displayed)
-    def erase(self):
-        super().erase()
-        for sprite in self.line_sprites:
-            print('erase', sprite.is_displayed)
+class NextToActDisplay (CascadeElement):
+    def __init__ (self):
+        self.subsprites = [
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+        ]
+        self.basex, self.basey = 780, 92
+        for i in range(4):
+            self.subsprites[i].rect.x = self.basex + 32 * i
+            self.subsprites[i].rect.y = self.basey
+
+    def update(self, game):
+        to_act = sorted(game.creatures.values(), key= lambda x: x.next_action) * 4
+        for i in range(4):
+            self.subsprites[i].animate(to_act[i].image_name)
+
 
 class Arena(CascadeElement):
     def __init__(self, game):
@@ -188,6 +205,9 @@ class Arena(CascadeElement):
         for sprite in self.board.values():
             sprite.animate('tiles/GreyTile.png')
 
+        #Highlight creatures
+        for creature in self.game.creatures.values():
+            self.board[creature.tile].animate('tiles/GreyTile2.png' if creature.is_pc else 'tiles/Red1.png')
         #Highlight active player
         if self.game.active_pc:
             self.board[self.game.active_pc.tile].animate('tiles/Green2.png')
@@ -203,20 +223,16 @@ class Game(CascadeElement):
         self.arena = Arena(self)
         self.creatures = {}
         self.hover_display = InfoDisplay(18, 90)
-        self.active_display = InfoDisplay(18, 340)
+        #self.active_display = InfoDisplay(18, 340)
         self.log_display = LogDisplay()
-        self.ability_display = AbilityDisplay()
         self.bg = SimpleSprite('bg.png')
-        self.subsprites = [self.bg, self.hover_display, self.ability_display, self.active_display, self.log_display, self.arena]
+        self.to_act_display = NextToActDisplay()
+        self.subsprites = [self.bg, self.hover_display, self.log_display, self.arena, self.to_act_display]
         #Will be set by new turn, only here declaring
         self.active_pc = None
         self.spawn_creatures(pc_list, mob_list)
         self.display()
         self.new_turn()
-
-    def get_valid_targets(self, creature, ability):
-        valid_targets = [tile for tile in self.arena.board.keys() if ability.is_valid_target(creature, tile)]
-        return valid_targets
 
     def spawn_creatures(self, pcs, mobs):
         i = 0
@@ -234,25 +250,27 @@ class Game(CascadeElement):
 
     def move_pc(self, tile):
         self.creatures[self.active_pc.tile].move_or_attack(tile)
-        self.new_turn()
+
+    def apply_ability(self, ability, creature, target):
+        creature.use_ability(ability, target)
 
     def new_turn(self):
-        while True:
+        while not self.is_over():
+            self.to_act_display.update(self)
             to_act = min(self.creatures.values(), key= lambda x: x.next_action)
-            if to_act.is_pc:
+            for i, v in enumerate(to_act.ability_cooldown):
+                to_act.ability_cooldown[i] = max(0, v - 1)
+            if not to_act.is_pc:
+                to_act.ai_play()
+            else:
                 self.active_pc = to_act
-                self.active_display.update(to_act)
-                self.ability_display.update(to_act)
-                return
-            if self.is_over():
                 break
-            to_act.ai_play()
+
 
     def update(self, mouse_pos):
         tile = self.arena.get_tile_for_mouse(mouse_pos)
-        cr = self.creatures.get(tile, None)
+        cr = self.creatures.get(tile, self.active_pc)
         self.hover_display.update(cr)
-        #
         for cr in self.creatures.values():
             cr.update()
         self.arena.update(mouse_pos)
@@ -307,44 +325,45 @@ class GameInterface (Interface):
     def ability_one(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 1:
             return
+        if self.game.active_pc.ability_cooldown[0] > 0:
+            return
         pc = self.game.active_pc
-        self._ability(pc, pc.abilities[0]['handler'])
+        self._ability(pc, pc.abilities[0])
 
     def ability_two(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 2:
             return
+        if self.game.active_pc.ability_cooldown[1] > 0:
+            return
         pc = self.game.active_pc
-        self._ability(pc, pc.abilities[1]['handler'])
+        self._ability(pc, pc.abilities[1])
 
     def ability_three(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 3:
             return
+        if self.game.active_pc.ability_cooldown[2] > 0:
+            return
         pc = self.game.active_pc
-        self._ability(pc, pc.abilities[2]['handler'])
+        self._ability(pc, pc.abilities[2])
 
-    def _ability(self, pc, handler):
-        valid_targets = self.game.get_valid_targets(pc, handler)
+    def _ability(self, pc, ability):
+        valid_targets = self.game.active_pc.get_valid_targets(self.game.active_pc, ability)
         if not valid_targets:
             self.game.log_display.push_text('No valid target.')
             return
         if valid_targets != [pc.tile]:
-            t = TargetInterface(self, valid_targets, handler)
+            t = TargetInterface(self, valid_targets, ability)
             t.activate()
             self.desactivate()
         else:
-            time_spent = handler.apply_ability(self.game.active_pc, self.game.active_pc.tile)
-            self.game.active_pc.next_action += time_spent / self.game.active_pc.speed
-            self.game.new_turn()
-
+            self.game.apply_ability(ability, self.game.active_pc, pc.tile)
 
     def quit(self, _):
         exit(0)
 
     def on_return(self, defunct):
-        if defunct.target:
-            time_spent = defunct.handler.apply_ability(self.game.active_pc, defunct.target)
-            self.game.active_pc.next_action += time_spent / self.game.active_pc.speed
-            self.game.new_turn()
+        if getattr(defunct, 'target'):
+            self.game.apply_ability(defunct.handler, self.game.active_pc, defunct.target)
 #
     def update(self, mouse_pos):
         self.game.update(mouse_pos)

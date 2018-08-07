@@ -78,6 +78,27 @@ class GameTile():
     def display_location(self):
         return (208 + 32 * (8 + self.x), 92 + 32 * (7 + self.y))
 
+class HelpInterface(Interface, CascadeElement):
+    def __init__(self, father):
+        Interface.__init__(self,father, keys = [
+            (K_ESCAPE, self.cancel),
+            ])
+        text1 = 'Move your characters with numpad 4 to 9 (8 goes north, 4 goes southwest etc.)'
+        text2 = 'Use abilities with numpad 1 to 3, confirm target with mouse if necessary.'
+        text3 = 'Press escape to cancel or quit.'
+        basex, basey = 250, 100
+        bg = SimpleSprite('helpmodal.png')
+        bg.rect.move_ip(basex, basey)
+        t1 = TextSprite(text1, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 20)
+        t2 = TextSprite(text2, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 120)
+        t3 = TextSprite(text3, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 220)
+        self.subsprites = [bg, t1, t2, t3]
+        self.display()
+
+    def cancel(self, mouse_pos):
+        self.erase()
+        self.done()
+
 
 class TargetInterface(Interface, SimpleSprite):
     def __init__(self, father, valid_targets, handler):
@@ -147,10 +168,15 @@ class AbilityDisplay (CascadeElement):
         self.erase()
         self.subsprites = []
         for i, ability in enumerate(creature.abilities):
-            sprite = SimpleSprite(ability.image_name)
-            sprite.rect.move_ip(self.basex , self.basey + 32 * i)
-            self.subsprites.append(sprite)
-            text_sprite = TextSprite(ability.name, '#ffffff', self.basex + 38, self.basey + 4 + 32 * i)
+            ability.rect.x, ability.rect.y = (self.basex , self.basey + 32 * i)
+            if creature.ability_cooldown[i]:
+                text = '<Wait %d turn(s)>' % ceil(creature.ability_cooldown[i] / 100)
+                ability.animate(ability.image_cd)
+            else:
+                text = ability.name
+                ability.animate(ability.image_name)
+            self.subsprites.append(ability)
+            text_sprite = TextSprite(text, '#ffffff', self.basex + 38, self.basey + 4 + 32 * i)
             self.subsprites.append(text_sprite)
         self.display()
 
@@ -231,6 +257,7 @@ class Game(CascadeElement):
         #Will be set by new turn, only here declaring
         self.active_pc = None
         self.spawn_creatures(pc_list, mob_list)
+        self.log_display.push_text('Press <?> for help and keybindings')
         self.display()
         self.new_turn()
 
@@ -258,8 +285,10 @@ class Game(CascadeElement):
         while not self.is_over():
             self.to_act_display.update(self)
             to_act = min(self.creatures.values(), key= lambda x: x.next_action)
-            for i, v in enumerate(to_act.ability_cooldown):
-                to_act.ability_cooldown[i] = max(0, v - 1)
+            elapsed_time = to_act.next_action - self.turn
+            for creature in self.creatures.values():
+                creature.tick(elapsed_time)
+            self.turn = to_act.next_action
             if not to_act.is_pc:
                 to_act.ai_play()
             else:
@@ -283,15 +312,16 @@ class GameInterface (Interface):
     def __init__ (self, father):
         self.game = Game(father.pc_list, father.mob_list)
         Interface.__init__(self, father, keys=[
-            (K_KP1, self.ability_one,),
-            (K_KP2, self.ability_two,),
-            (K_KP3, self.ability_three,),
-            (K_KP4, self.go_sw),
-            (K_KP5, self.go_s),
-            (K_KP6, self.go_se),
-            (K_KP7, self.go_nw),
-            (K_KP8, self.go_n),
-            (K_KP9, self.go_ne),
+            ('1', self.ability_one,),
+            ('2', self.ability_two,),
+            ('3', self.ability_three,),
+            ('4', self.go_sw),
+            ('5', self.go_s),
+            ('6', self.go_se),
+            ('7', self.go_nw),
+            ('8', self.go_n),
+            ('9', self.go_ne),
+            ('?', self.disp_help),
             (K_ESCAPE, self.quit)])
 
 
@@ -361,8 +391,13 @@ class GameInterface (Interface):
     def quit(self, _):
         exit(0)
 
+    def disp_help(self, _):
+        t = HelpInterface(self)
+        t.activate()
+        self.desactivate()
+
     def on_return(self, defunct):
-        if getattr(defunct, 'target'):
+        if getattr(defunct, 'target', None):
             self.game.apply_ability(defunct.handler, self.game.active_pc, defunct.target)
 #
     def update(self, mouse_pos):

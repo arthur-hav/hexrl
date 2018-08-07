@@ -30,7 +30,7 @@ class MainMenuInterface(Interface, CascadeElement):
     def on_return(self, defunct):
         self.display()
 
-class InventoryDisplay(CascadeElement):
+class StatusDisplay(CascadeElement):
     def __init__(self, worldinterface):
         self.worldinterface = worldinterface
         self.gold_icon = SimpleSprite('icons/gold.png')
@@ -55,28 +55,31 @@ class InventoryDisplay(CascadeElement):
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
-        self.inventory_display = InventoryDisplay(self)
+        self.inventory_display = StatusDisplay(self)
         self.mob_list = []
-        self.current_question = {}
+        self.current_question = ''
+        self.previous_question = ''
         self.current_answer = {}
         self.bg = SimpleSprite('menu.png')
         self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
-        self.choice_text = TextSprite('', '#ffffff', 320, 400)
-        self.subsprites = [self.bg, self.current_text, self.choice_text, self.inventory_display]
+        self.choice_text = [TextSprite('', '#ffffff', 320, 400)] * 3
+        self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text
         Interface.__init__(self, father, keys = [
-            (K_KP1, lambda x: self.choose(0, x)),
-            (K_KP2, lambda x: self.choose(1, x)),
-            (K_KP3, lambda x: self.choose(2, x)),
+            ('1', lambda x: self.choose(0, x)),
+            ('2', lambda x: self.choose(1, x)),
+            ('3', lambda x: self.choose(2, x)),
             (K_ESCAPE, lambda x: self.save_game()),
             ])
 
     def on_return(self, defunct):
-        if self.current_answer:
-            self.current_answer['handler'].end(self)
         self.display()
+        self.pick()
 
     def new_game(self):
         self.party_gold = 0
+        self.day = 1
+        self.this_day_question = 0
+        self.questions_per_day = 3 
         self.pc_list = [
             Creature('Fighter'),
             Creature('Barbarian'),
@@ -88,20 +91,30 @@ class WorldInterface(Interface, CascadeElement):
 
     def pick (self):
         if not any((pc.health > 0 for pc in self.pc_list)):
-            self.current_question = choices.GAMEOVER
+            self.current_question = 'gameover'
+        elif self.day == 1 and self.this_day_question == 0:
+            self.current_question = 'start'
+        elif self.this_day_question > self.questions_per_day:
+            self.current_question = 'rest'
+        elif self.previous_question in ('gobelin_squad', 'undead'):
+            self.current_question = 'loot'
         else:
-            self.current_question = random.choice(choices.RANDOM_LIST)
+            self.current_question = random.choice(list(choices.NORMAL_CHOICES.keys()))
+        self.previous_question = self.current_question
         self.display_choices()
 
     def display_choices(self):
-        choice_text = '\n'.join( ["%d - %s" % (key + 1, val['text']) for key, val in enumerate(self.current_question['choices'])])
-        self.choice_text.set_text(choice_text)
-        self.current_text.set_text(self.current_question['text'])
+        question = choices.get_question(self.current_question)
+        for key, val in enumerate(question['choices']):
+            choice_text = "[%d] - %s" % (key + 1, val['text'])
+            self.choice_text[key].set_text(choice_text)
+        self.current_text.set_text(question['text'])
 
     def choose(self, key, tile):
-        if key >= len(self.current_question['choices']):
+        question = choices.get_question(self.current_question)
+        if key >= len(question['choices']):
             return
-        self.current_answer = self.current_question['choices'][key]
+        self.current_answer = question['choices'][key]
         self.current_answer['handler'].start(self)
 
     def update(self, mouse_pos):
@@ -115,7 +128,15 @@ class WorldInterface(Interface, CascadeElement):
 
     def save_game(self):
         pc_dump = [pc.dict_dump()for pc in self.pc_list]
-        save = {'pcs':pc_dump, 'gold':self.party_gold}
+        save = {
+                'pcs':pc_dump, 
+                'gold':self.party_gold,
+                'day': self.day,
+                'questions_per_day': self.questions_per_day,
+                'current_question': self.current_question,
+                'previous_question': self.previous_question,
+                'this_day_question': self.this_day_question
+                }
         with open('save.json', 'w') as f:
             f.write(json.dumps(save))
         self.erase()
@@ -125,8 +146,14 @@ class WorldInterface(Interface, CascadeElement):
         with open(filename) as f:
             d = json.loads(f.read())
         self.party_gold = d['gold']
+        self.day = d['day']
+        self.questions_per_day = d['questions_per_day']
+        self.this_day_question = d['this_day_question']
+        self.current_question = d['current_question']
+        self.previous_question = d['previous_question']
         self.pc_list = [Creature.dict_load(pc) for pc in d['pcs']]
-        self.pick()
+        #self.pick()
+        self.display_choices()
 
 #this calls the 'main' function when this script is executed
 if __name__ == '__main__':

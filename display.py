@@ -55,6 +55,8 @@ class Display():
                 if event.type == QUIT:
                     exit(0)
                 elif event.type == KEYDOWN:
+                    for handler in self.key_handlers[event.unicode]:
+                        handler(pos)
                     for handler in self.key_handlers[event.key]:
                         handler(pos)
                 elif event.type == MOUSEBUTTONDOWN:
@@ -127,7 +129,7 @@ class SimpleSprite (pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (rect.w * 2, rect.h * 2)) 
         self.rect = self.image.get_rect()
         self.subsprites = subsprites
-        self.image_name = image_name
+        self.frame_name = image_name
 
     def move_to(self, x, y):
         self.rect.x, self.rect.y = x, y
@@ -136,12 +138,12 @@ class SimpleSprite (pygame.sprite.Sprite):
         DISPLAY.sprites.add (self)
     
     def animate(self, frame_name):
-        if frame_name == self.image_name:
+        if frame_name == self.frame_name:
             return
         self.image = SimpleSprite.load_image(frame_name)
         rect = self.image.get_rect()
         self.image = pygame.transform.scale(self.image, (rect.w * 2, rect.h * 2)) 
-        self.image_name = frame_name
+        self.frame_name = frame_name
 
     def erase (self):
         DISPLAY.sprites.remove(self)

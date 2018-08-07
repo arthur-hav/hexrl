@@ -1,4 +1,5 @@
 import random
+import items
 
 def get_question(key):
     if key in NORMAL_CHOICES:
@@ -12,6 +13,13 @@ class FightOption():
         world_interface.mob_list = world_interface.current_answer['mobs']
         world_interface.start_game()
 
+class ShopOption():
+    def start(self, world_interface):
+        #world_interface.party_gold -= shop_price
+        world_interface.this_day_question += 1
+        world_interface.pick()
+        world_interface.inventory.append(items.ITEMS['amulet_of_health'])
+
 class LootOption():
     def __init__(self, average_value):
         self.average_value = average_value
@@ -21,6 +29,7 @@ class LootOption():
             i += self.average_value / 2 
         world_interface.party_gold += random.randint(i, i + self.average_value / 2)
         world_interface.this_day_question += 1
+        world_interface.inventory.append(items.ITEMS['amulet_of_health'])
         world_interface.pick()
     @staticmethod
     def end(world_interface):

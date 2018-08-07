@@ -3,8 +3,30 @@ from display import Display, Interface, TextSprite, SimpleSprite, CascadeElement
 from pygame.locals import *
 import choices
 import random
+import items
 import json
 import os
+
+class EquipInterface(Interface, CascadeElement):
+    def __init__(self, father, item):
+        self.item = item
+        self.bg = SimpleSprite('helpmodal.png')
+        self.text = TextSprite('Equip which adventurer ? [1-5]', '#ffffff', 320, 280)
+        self.subsprites = [self.bg, self.text]
+        Interface.__init__(self, father, keys = [
+            (K_ESCAPE, lambda x: self.done()),
+            ('1', lambda x: self.equip(0)),
+            ('2', lambda x: self.equip(1)),
+            ('3', lambda x: self.equip(2)),
+            ('4', lambda x: self.equip(3)),
+            ('5', lambda x: self.equip(4)),
+            ])
+    def equip(self, teamnum):
+        if teamnum > len(self.father.pc_list):
+            return
+        self.item.equip(self.father.pc_list[teamnum])
+        self.erase()
+        self.done()
 
 class MainMenuInterface(Interface, CascadeElement):
     def __init__(self):
@@ -36,7 +58,11 @@ class StatusDisplay(CascadeElement):
         self.gold_icon = SimpleSprite('icons/gold.png')
         self.gold_icon.rect.x, self.gold_icon.rect.y = 754, 92
         self.gold_stat = TextSprite('', '#ffffff', 786, 100)
-        self.subsprites = [self.gold_icon, self.gold_stat]
+        self.inventory = [] 
+        for i in range(20):
+            self.inventory.append(SimpleSprite('icons/icon-blank.png'))
+            self.inventory[i].rect.x, self.inventory[i].rect.y = 754 + (i % 4) * 32, 350 + (i // 4) * 32
+        self.subsprites = [self.gold_icon, self.gold_stat] + self.inventory
         self.health_stats = []
         self.pc_icons = []
         for i in range(5):
@@ -48,10 +74,17 @@ class StatusDisplay(CascadeElement):
             self.subsprites.extend([pc_tile, pc_health_stat])
 
     def update(self, mouse_pos):
+        self.subsprites = [self.gold_icon, self.gold_stat] + self.inventory
         self.gold_stat.set_text(str(self.worldinterface.party_gold))
         for i, pc in enumerate(self.worldinterface.pc_list):
             self.health_stats[i].set_text("%s/%s" % (pc.health, pc.maxhealth))
             self.pc_icons[i].animate(pc.image_name)
+        for i, item in enumerate(self.worldinterface.inventory):
+            if item.equipped_to:
+                self.inventory[i].animate('tiles/Green2.png')
+            item.rect.x, item.rect.y = self.inventory[i].rect.x, self.inventory[i].rect.y
+            self.subsprites.append(item)
+        self.display()
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
@@ -61,6 +94,7 @@ class WorldInterface(Interface, CascadeElement):
         self.previous_question = ''
         self.current_answer = {}
         self.bg = SimpleSprite('menu.png')
+        self.inventory = []
         self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
         self.choice_text = [TextSprite('', '#ffffff', 320, 400)] * 3
         self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text
@@ -68,12 +102,22 @@ class WorldInterface(Interface, CascadeElement):
             ('1', lambda x: self.choose(0, x)),
             ('2', lambda x: self.choose(1, x)),
             ('3', lambda x: self.choose(2, x)),
+            ('e', self.equip),
             (K_ESCAPE, lambda x: self.save_game()),
             ])
 
     def on_return(self, defunct):
         self.display()
-        self.pick()
+        if isinstance(defunct, GameInterface):
+            self.pick()
+
+    def equip(self, mouse_pos):
+        for sprite in self.inventory:
+            if sprite.rect.collidepoint(mouse_pos):
+                ei = EquipInterface(self, sprite)
+                ei.activate()
+                ei.display()
+                self.desactivate()
 
     def new_game(self):
         self.party_gold = 0

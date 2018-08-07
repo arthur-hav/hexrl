@@ -40,6 +40,7 @@ class Creature(SimpleSprite, CascadeElement):
         SimpleSprite.__init__(self, DEFS[defkey]['image_name']) 
         self.subsprites = [self.health_gauge, self.shield_gauge]
         self.ability_cooldown = [0 for _ in self.abilities]
+        self.items = []
 
     def set_in_game(self, game, game_tile, next_action):
         self.tile = game_tile

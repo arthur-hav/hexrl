@@ -29,9 +29,10 @@ class SideShieldGauge(Gauge):
         self.set_height(self.height)
 
 class Creature(SimpleSprite, CascadeElement):
-    def __init__ (self, defkey):
+    def __init__ (self, defkey, is_pc=False):
         for k, v in DEFS[defkey].items():
             setattr(self, k, v)
+        self.is_pc = is_pc
         self.defkey = defkey
         self.health_gauge = SideHealthGauge(self)
         self.shield_gauge = SideShieldGauge(self)
@@ -79,7 +80,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = destination
         self.rect.x, self.rect.y = self.tile.display_location()
         self.game.creatures[destination] = self
-        self.next_action += 1000 / self.speed
+        self.next_action += 1000 // self.speed
         if self.is_pc:
             self.game.new_turn()
 
@@ -113,9 +114,6 @@ class Creature(SimpleSprite, CascadeElement):
             del self.game.creatures[self.tile]
             self.erase()
 
-    def get_valid_targets(self, creature, ability):
-        valid_targets = [tile for tile in self.game.arena.board.keys() if ability.is_valid_target(self, tile)]
-        return valid_targets
 
     def ai_play(self):
         nearest_pc = min( [c for c in self.game.creatures.values() if c.is_pc], 
@@ -123,7 +121,7 @@ class Creature(SimpleSprite, CascadeElement):
         if self.abilities:
             ability_num = random.randint(0, len(self.abilities) - 1)
         if self.abilities and self.ability_cooldown[ability_num] == 0:
-            valid_targets = self.get_valid_targets(self, self.abilities[ability_num])
+            valid_targets = self.game.get_valid_targets(self, self.abilities[ability_num])
             target = random.choice(valid_targets)
             self.use_ability(self.abilities[ability_num], target)
         else:
@@ -138,14 +136,26 @@ class Creature(SimpleSprite, CascadeElement):
         SimpleSprite.erase(self)
 
     def dict_dump(self):
+        items = self.items.copy()
+        for item in self.items:
+            item.unequip()
         return {
+            'items': [item.key for item in self.items],
             'health':self.health, 
             'defkey':self.defkey
             }
+        for item in items:
+            item.equip(self)
+
     @staticmethod 
-    def dict_load(data):
+    def dict_load(data, items):
         c = Creature(data['defkey'])
         c.health = data['health']
+        for key in data['items']:
+            for item in items:
+                if item.key == key and not item.equipped_to:
+                    item.equip(c)
+        c.is_pc = True
         return c
 
 class Ability(SimpleSprite):
@@ -157,6 +167,8 @@ class Ability(SimpleSprite):
         self.image_cd = image_name
         self.cooldown = 0
         self.ability_range = 0
+        self.aoe = 0
+        self.power = 0
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -176,8 +188,16 @@ class DamageAbility(Ability):
 
     def apply_ability(self, creature, target):
         target_cr = creature.game.creatures[target]
-        target_cr.take_damage(self.damage) 
-        creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, target_cr.name, self.damage))
+        damage = self.power + round(creature.damage * self.damagefactor)
+        target_cr.take_damage(damage)
+        creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, target_cr.name, damage))
+        if self.aoe:
+            for tile in target_cr.tile.neighbours():
+                splash_cr = creature.game.creatures.get(tile, None)
+                splash_dmg = int(damage * self.aoe)
+                if splash_cr and splash_cr.is_pc != creature.is_pc:
+                    splash_cr.take_damage(splash_dmg)
+                    creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, splash_cr.name, splash_dmg))
 
 class ShieldAbility(Ability):
     def is_valid_target(self, creature, target):
@@ -185,8 +205,9 @@ class ShieldAbility(Ability):
                 and target in creature.game.creatures \
                 and creature.game.creatures[target].is_pc == creature.is_pc
     def apply_ability(self, creature, target):
+        power = self.power + round(creature.damage * self.damagefactor)
         target_cr = creature.game.creatures[target]
-        target_cr.shield = max(target_cr.shield, self.power)
+        target_cr.shield = max(target_cr.shield, power)
         creature.game.log_display.push_text("%s gains a magical shield." % (target_cr.name))
 
 class NovaAbility(Ability):
@@ -194,10 +215,11 @@ class NovaAbility(Ability):
         return target == creature.tile
 
     def apply_ability(self, creature, target):
+        damage = round(creature.damage * self.damagefactor)
         for cr in list(creature.game.creatures.values()):
             if creature.tile.dist(cr.tile) < self.ability_range and creature.is_pc != cr.is_pc:
-                cr.take_damage(self.damage)
-                creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, cr.name, self.damage))
+                cr.take_damage(damage)
+                creature.game.log_display.push_text("%s hits %s for %d damage." % (creature.name, cr.name, damage))
 
 class Invocation(Ability):
     def is_valid_target(self, creature, target):
@@ -216,32 +238,41 @@ DEFS = {
         'portrait': 'Fighter.png',
         'image_name': 'tiles/Fighter.png',
         'health': 100,
-        'damage': 15,
+        'damage': 16,
         'speed': 10,
         'name': 'Fighter',
-        'abilities': [ShieldAbility(name = 'Shield', image_name='icons/shield-icon.png', image_cd='icons/shield-icon-cd.png', ability_range=1, power=20, cooldown=300)],
-        'is_pc': True
+        'abilities': [ShieldAbility(name = 'Shield', image_name='icons/shield-icon.png', image_cd='icons/shield-icon-cd.png', ability_range=1, power=8, damagefactor=0.5, cooldown=300)],
     },
     'Barbarian': {
         'portrait': 'Barbarian.png',
         'image_name': 'tiles/Barbarian.png',
         'health': 80,
-        'damage': 18,
+        'damage': 16,
         'speed': 10,
         'is_pc': True,
         'name': 'Barbarian',
-        'abilities': [NovaAbility(name = 'Cleave', image_name='icons/cleave.png', ability_range=1.01, damage=14)]
+        'abilities': [NovaAbility(name = 'Cleave', image_name='icons/cleave.png', ability_range=1.01, damagefactor=1.2, cooldown=200)]
     },
     'Archer': {
         'portrait': 'Archer.png',
         'image_name': 'tiles/Archer.png',
         'health': 80,
-        'damage': 10,
-        'speed': 11,
+        'damage': 12,
+        'speed': 12,
         'name': 'Archer',
-        'abilities': [ DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damage = 10, need_los = True) ],
-        'is_pc': True
+        'abilities': [ DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damagefactor=1, need_los = True) ],
     },
+    'Wizard': {
+        'portrait': 'Wizard.png',
+        'image_name': 'tiles/Wizard.png',
+        'health': 70,
+        'damage': 10,
+        'speed': 8,
+        'name': 'Wizard',
+        'abilities': [ DamageAbility(name = 'Fireball', image_name = 'icons/fireball.png', image_cd='icons/fireball-cd.png', ability_range = 4, power=12, damagefactor=1.5, need_los = True, aoe=0.5, cooldown=500), DamageAbility(name = 'Fireball', image_name = 'icons/fireball.png', image_cd='icons/fireball-cd.png', ability_range = 4, power=12, damagefactor=1.5, need_los = True, aoe=0.5, cooldown=500) ],
+    },
+
+
     'Gobelin': {
         'portrait': 'Gobelin.png',
         'image_name': 'tiles/Gobelin.png',
@@ -251,7 +282,6 @@ DEFS = {
         'speed': 15,
         'name': 'Gobelin',
         'abilities': [],
-        'is_pc': False
     },
     'Skeleton': {
         'portrait': 'Skeleton.png',
@@ -262,17 +292,15 @@ DEFS = {
         'speed': 7,
         'name': 'Skeleton',
         'abilities': [],
-        'is_pc': False
     },
     'Necromancer': {
         'portrait': 'Necromancer.png',
         'image_name': 'tiles/Necromancer.png',
         'health': 70,
-        'damage': 8,
+        'damage': 7,
         'speed': 8,
         'name': 'Necromancer',
         'description': 'Can raise undead',
-        'abilities': [ Invocation(name='Raise undead', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Skeleton', ability_range=3, cooldown=300) ],
-        'is_pc': False
+        'abilities': [ Invocation(name='Raise undead', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Skeleton', ability_range=2, cooldown=200) ],
     }
 }

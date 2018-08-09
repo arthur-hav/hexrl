@@ -6,6 +6,28 @@ import random
 import os.path
 import json
 
+class QuitInterface(Interface, CascadeElement):
+    def __init__(self, father):
+        Interface.__init__(self,father, keys = [
+            (K_ESCAPE, self.cancel),
+            ('y', self.confirm),
+            ('n', self.cancel),
+            ])
+        text = 'Really quit ? [y] / [n]'
+        basex, basey = 274, 220
+        bg = SimpleSprite('helpmodal.png')
+        bg.rect.move_ip(basex, basey)
+        t1 = TextSprite(text, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 100)
+        self.subsprites = [bg, t1]
+        self.display()
+
+    def cancel(self, mouse_pos):
+        self.erase()
+        self.done()
+
+    def confirm(self, mouse_pos):
+        exit(0)
+
 class GameTile():
     CO = cos(pi/6)
     MAP_RADIUS = 7.25
@@ -83,15 +105,17 @@ class HelpInterface(Interface, CascadeElement):
         Interface.__init__(self,father, keys = [
             (K_ESCAPE, self.cancel),
             ])
-        text1 = 'Move your characters with numpad 4 to 9 (8 goes north, 4 goes southwest etc.)'
-        text2 = 'Use abilities with numpad 1 to 3, confirm target with mouse if necessary.'
-        text3 = 'Press escape to cancel or quit.'
-        basex, basey = 250, 100
+        text1 = 'Move your adventurers with numpad [4-9] (4 goes southwest, 5 goes south etc.)'
+        text2 = 'Use special abilities with numpad [1-3], confirm target with mouse click or [Enter].'
+        text3 = '[0] idle for half a turn.'
+        text4 = '[Escape] to cancel or quit.'
+        basex, basey = 274, 220
         bg = SimpleSprite('helpmodal.png')
         bg.rect.move_ip(basex, basey)
         t1 = TextSprite(text1, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 20)
-        t2 = TextSprite(text2, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 120)
-        t3 = TextSprite(text3, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 220)
+        t2 = TextSprite(text2, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 70)
+        t3 = TextSprite(text3, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 120)
+        t4 = TextSprite(text3, '#ffffff', maxlen = 350, x=basex + 20, y=basey + 170)
         self.subsprites = [bg, t1, t2, t3]
         self.display()
 
@@ -100,33 +124,44 @@ class HelpInterface(Interface, CascadeElement):
         self.done()
 
 
-class TargetInterface(Interface, SimpleSprite):
-    def __init__(self, father, valid_targets, handler):
-        Interface.__init__(self,father, keys = [
+class TargetInterface(Interface):
+    def __init__(self, father, valid_targets, ability):
+        super().__init__(father, keys = [
             (K_ESCAPE, self.cancel),
+            (K_RETURN, self.confirm),
+            (K_TAB, self.tab),
             ])
-        SimpleSprite.__init__(self,'icons/target.png')
-        self.target = None
+        self.target = self.father.game.selected if self.father.game.selected \
+            and self.father.game.selected in valid_targets else valid_targets[0]
         self.valid_targets = valid_targets
-        self.handler = handler
+        self.ability = ability
     def cancel(self, mouse_pos):
         self.target = None
-        self.erase()
+        self.father.game.selected = None
         self.done()
+    def tab(self, mouse_pos):
+        index = self.valid_targets.index(self.target)
+        index = (index + 1) % len(self.valid_targets)
+        self.target = self.valid_targets[index]
     def update(self, mouse_pos):
-        tile = self.father.game.arena.get_tile_for_mouse(mouse_pos)
+        self.father.game.update(mouse_pos)
+        range_hint = self.father.game.get_range_hint(self.father.game.active_pc, self.ability)
+        for target in range_hint:
+            self.father.game.arena.board[target].animate('tiles/Yellow2.png')
         for target in self.valid_targets:
             self.father.game.arena.board[target].animate('tiles/Yellow.png')
-        if tile:
-            self.rect.x, self.rect.y = tile.display_location()
-            self.display()
-        else:
-            self.erase()
+        tile = self.father.game.arena.get_tile_for_mouse(mouse_pos)
+        if tile and tile in self.valid_targets:
+            self.target = tile
+        self.father.game.selected = self.target
     def on_click(self, mouse_pos):
         self.target = self.father.game.arena.get_tile_for_mouse(mouse_pos)
         if self.target and self.target in self.valid_targets:
-            self.erase()
+            self.father.game.selected = None
             self.done()
+    def confirm(self, mouse_pos):
+        self.father.game.selected = None
+        self.done()
 
 class InfoDisplay (CascadeElement):
     def __init__ (self, basex, basey):
@@ -142,9 +177,9 @@ class InfoDisplay (CascadeElement):
         self.damage.rect.move_ip(basex, basey + 256)
         self.damage_stat = TextSprite('', '#ffffff', basex + 36, basey + 260)
         self.speed = SimpleSprite('icons/quickness.png')
-        self.speed.rect.move_ip(basex, basey + 288)
-        self.speed_stat = TextSprite('', '#ffffff', basex + 36, basey + 292)
-        self.ability_display = AbilityDisplay(basex, basey + 320)
+        self.speed.rect.move_ip(basex + 80, basey + 256) 
+        self.speed_stat = TextSprite('', '#ffffff', basex + 116, basey + 260)
+        self.ability_display = AbilityDisplay(basex, basey + 288)
         self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description]
 
     def update(self, creature):
@@ -253,9 +288,12 @@ class Game(CascadeElement):
         self.log_display = LogDisplay()
         self.bg = SimpleSprite('bg.png')
         self.to_act_display = NextToActDisplay()
-        self.subsprites = [self.bg, self.hover_display, self.log_display, self.arena, self.to_act_display]
+        self.hover_xair = SimpleSprite('icons/target.png')
+        self.selected_xair = SimpleSprite('icons/select.png')
+        self.subsprites = [self.bg, self.hover_display, self.log_display, self.arena, self.to_act_display, self.hover_xair, self.selected_xair]
         #Will be set by new turn, only here declaring
         self.active_pc = None
+        self.selected = None
         self.spawn_creatures(pc_list, mob_list)
         self.log_display.push_text('Press <?> for help and keybindings')
         self.display()
@@ -265,13 +303,13 @@ class Game(CascadeElement):
         i = 0
         for pc, gt in zip(pcs, [(0, 6), (1, 6.5), (-1, 6.5), (2, 6), (-2, 6)]):
             if pc.health > 0:
-                pc.set_in_game(self, GameTile(*gt), i / 100)
+                pc.set_in_game(self, GameTile(*gt), i)
                 self.subsprites.append(pc)
             i += 2
         i = 1
         for mobdef, gt in mobs:
             c = Creature(mobdef)
-            c.set_in_game(self, GameTile(*gt), i / 100)
+            c.set_in_game(self, GameTile(*gt), i)
             self.subsprites.append(c)
             i += 2
 
@@ -282,6 +320,7 @@ class Game(CascadeElement):
         creature.use_ability(ability, target)
 
     def new_turn(self):
+        self.selected = None
         while not self.is_over():
             self.to_act_display.update(self)
             to_act = min(self.creatures.values(), key= lambda x: x.next_action)
@@ -295,22 +334,39 @@ class Game(CascadeElement):
                 self.active_pc = to_act
                 break
 
-
     def update(self, mouse_pos):
         tile = self.arena.get_tile_for_mouse(mouse_pos)
-        cr = self.creatures.get(tile, self.active_pc)
+        cr = self.creatures.get(tile, self.creatures.get(self.selected, self.active_pc))
         self.hover_display.update(cr)
         for cr in self.creatures.values():
             cr.update()
         self.arena.update(mouse_pos)
+        if tile:
+            self.hover_xair.rect.x, self.hover_xair.rect.y = tile.display_location()
+            self.hover_xair.display()
+        else:
+            self.hover_xair.erase()
+        if self.selected:
+            self.selected_xair.rect.x, self.selected_xair.rect.y = self.selected.display_location()
+            self.selected_xair.display()
+        else:
+            self.selected_xair.erase()
 
     def is_over(self):
         return all((c.is_pc for c in self.creatures.values())) or all((not c.is_pc for c in self.creatures.values()))
 
+    def get_valid_targets(self, creature, ability):
+        valid_targets = [tile for tile in self.arena.board.keys() if ability.is_valid_target(creature, tile)]
+        return valid_targets
+
+    def get_range_hint(self, creature, ability):
+        valid_range = [tile for tile in self.arena.board.keys() if ability.range_hint(creature, tile)]
+        return valid_range
+
 
 class GameInterface (Interface):
-    def __init__ (self, father):
-        self.game = Game(father.pc_list, father.mob_list)
+    def __init__ (self, father, mob_list):
+        self.game = Game(father.pc_list, mob_list)
         Interface.__init__(self, father, keys=[
             ('1', self.ability_one,),
             ('2', self.ability_two,),
@@ -321,6 +377,7 @@ class GameInterface (Interface):
             ('7', self.go_nw),
             ('8', self.go_n),
             ('9', self.go_ne),
+            ('0', self.pass_turn),
             ('?', self.disp_help),
             (K_ESCAPE, self.quit)])
 
@@ -352,6 +409,10 @@ class GameInterface (Interface):
             self.game.erase()
             self.done()
 
+    def pass_turn(self, _):
+        self.game.active_pc.next_action += 50
+        self.game.new_turn()
+
     def ability_one(self, mouse_pos):
         if len(self.game.active_pc.abilities) < 1:
             return
@@ -376,29 +437,34 @@ class GameInterface (Interface):
         pc = self.game.active_pc
         self._ability(pc, pc.abilities[2])
 
+    def on_click(self, mouse_pos):
+        tile = self.game.arena.get_tile_for_mouse(mouse_pos)
+        if self.game.selected and self.game.selected == tile:
+            self.selected = None
+        self.game.selected = tile
+
     def _ability(self, pc, ability):
-        valid_targets = self.game.active_pc.get_valid_targets(self.game.active_pc, ability)
+        valid_targets = self.game.get_valid_targets(self.game.active_pc, ability)
         if not valid_targets:
             self.game.log_display.push_text('No valid target.')
             return
-        if valid_targets != [pc.tile]:
-            t = TargetInterface(self, valid_targets, ability)
-            t.activate()
-            self.desactivate()
-        else:
-            self.game.apply_ability(ability, self.game.active_pc, pc.tile)
+        t = TargetInterface(self, valid_targets, ability)
+        t.activate()
+        self.desactivate()
 
     def quit(self, _):
-        exit(0)
+        qi = QuitInterface(self)
+        qi.activate()
+        self.desactivate()
 
     def disp_help(self, _):
-        t = HelpInterface(self)
-        t.activate()
+        hi = HelpInterface(self)
+        hi.activate()
         self.desactivate()
 
     def on_return(self, defunct):
         if getattr(defunct, 'target', None):
-            self.game.apply_ability(defunct.handler, self.game.active_pc, defunct.target)
+            self.game.apply_ability(defunct.ability, self.game.active_pc, defunct.target)
 #
     def update(self, mouse_pos):
         self.game.update(mouse_pos)

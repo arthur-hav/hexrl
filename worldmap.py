@@ -13,7 +13,7 @@ class EquipInterface(Interface, CascadeElement):
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.x, self.bg.rect.y = 262, 200
         self.text = TextSprite('Equip which adventurer ? [1-5]', '#ffffff', 274, 220)
-        self.stats = TextSprite('Stats: %s' % item.stats_string(), '#ffffff', 274, 240, maxlen=350)
+        self.stats = TextSprite(str(item), '#ffffff', 274, 240, maxlen=350)
         self.subsprites = [self.bg, self.stats, self.text]
         Interface.__init__(self, father, keys = [
             (K_ESCAPE, lambda x: self.done()),
@@ -78,6 +78,7 @@ class StatusDisplay(CascadeElement):
 
     def update(self, mouse_pos):
         self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory
+        self.item_sprites = []
         self.gold_stat.set_text(str(self.worldinterface.party_gold))
         for i, pc in enumerate(self.worldinterface.pc_list):
             self.health_stats[i].set_text("%s/%s" % (pc.health, pc.maxhealth))
@@ -90,6 +91,15 @@ class StatusDisplay(CascadeElement):
             item.rect.x, item.rect.y = self.inventory[i].rect.x, self.inventory[i].rect.y
             self.subsprites.append(item)
         self.display()
+
+    def on_click(self, mouse_pos):
+        for sprite in self.worldinterface.inventory:
+            if sprite.rect.collidepoint(mouse_pos):
+                ei = EquipInterface(self.worldinterface, sprite)
+                ei.activate()
+                ei.display()
+                self.worldinterface.desactivate()
+                break
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
@@ -116,13 +126,7 @@ class WorldInterface(Interface, CascadeElement):
             self.pick()
 
     def on_click(self, mouse_pos):
-        for sprite in self.inventory:
-            if sprite.rect.collidepoint(mouse_pos):
-                ei = EquipInterface(self, sprite)
-                ei.activate()
-                ei.display()
-                self.desactivate()
-                break
+        self.inventory_display.on_click(mouse_pos)
 
     def new_game(self):
         self.party_gold = 0
@@ -183,7 +187,7 @@ class WorldInterface(Interface, CascadeElement):
 
     def save_game(self):
         pc_dump = [pc.dict_dump()for pc in self.pc_list]
-        inventory_dump = [item.key for item in self.inventory]
+        inventory_dump = [item.name for item in self.inventory]
         save = {
                 'pcs':pc_dump, 
                 'gold':self.party_gold,
@@ -214,7 +218,9 @@ class WorldInterface(Interface, CascadeElement):
         self.current_question = choices.get_question(self.current_question_key)(self)
         self.current_question.load(d['rolls'])
         for key in d['inventory_dump']:
-            self.inventory.append(items.Item(key))
+            item_class = items.ITEMS[key][0]
+            item_args = items.ITEMS[key][1]
+            self.inventory.append(item_class(*item_args))
         self.pc_list = [Creature.dict_load(pc, self.inventory) for pc in d['pcs']]
         self.display_choices()
 
@@ -237,3 +243,4 @@ if __name__ == '__main__':
     m.activate()
     m.display()
     DISPLAY.main()
+

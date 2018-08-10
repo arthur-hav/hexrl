@@ -116,7 +116,9 @@ class ShopChoice(Choice):
     def roll(self):
         self.rolls = [ random.choice( list(items.ITEMS.keys()) ), exp_discount() ]
     def _init(self):
-        self.item = items.Item(self.rolls[0])
+        item_class = items.ITEMS[self.rolls[0]][0]
+        item_args = items.ITEMS[self.rolls[0]][1]
+        self.item = item_class(*item_args) 
         self.shop_price = self.rolls[1] * self.item.shop_price // 1000
 
     def get_text(self):

@@ -1,5 +1,5 @@
 from display import SimpleSprite, CascadeElement, Gauge
-from abilities import BoltAbility, DamageAbility, AoeAbility, NovaAbility, Invocation, ShieldAbility
+from abilities import BoltAbility, DamageAbility, AoeAbility, NovaAbility, Invocation, ShieldAbility, ABILITIES
 import os
 import random
 import math
@@ -11,7 +11,7 @@ class SideHealthGauge(Gauge):
         self.displayed = False
         super().__init__(4, 32, '#BB0008')
     def update(self):
-        self.height = math.ceil((16 * self.creature.health) // self.creature.maxhealth) * 2
+        self.height = math.ceil((16 * self.creature.health) / self.creature.maxhealth) * 2
         self.rect.x, self.rect.y = self.creature.tile.display_location()
         self.rect.y += 32 - self.height
         self.set_height(self.height)
@@ -34,6 +34,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.is_ranged = False
         for k, v in DEFS[defkey].items():
             setattr(self, k, v)
+        self.abilities = [ABILITIES[k] for k in self.abilities]
         self.is_pc = is_pc
         self.defkey = defkey
         self.health_gauge = SideHealthGauge(self)
@@ -52,18 +53,52 @@ class Creature(SimpleSprite, CascadeElement):
         self.next_action = next_action
         self.shield = 0
         self.ability_cooldown = [0, 0, 0]
+        self.status_cooldown = []
+        self.status = []
 
     def update(self):
         if self.frames:
             self.animate(self.frames.pop(0))
         self.health_gauge.update()
         self.shield_gauge.update()
+
+    def dict_dump(self):
+        items = self.items.copy()
+        # This is so we dont stack stats by saving/loading with, say, a health amulet
+        for item in self.items:
+            item.unequip()
+        d = {
+            'items': [item.name for item in items],
+            'health':self.health, 
+            'defkey':self.defkey
+            }
+        for item in items:
+            item.equip(self)
+        return d
+
+    @staticmethod 
+    def dict_load(data, items):
+        c = Creature(data['defkey'])
+        c.health = data['health']
+        for key in data['items']:
+            for item in items:
+                if item.name == key and not item.equipped_to:
+                    item.equip(c)
+                    break
+        c.is_pc = True
+        return c
     
+    ### Below this : only valid if previously set_in_game
+
     def tick(self, elapsed_time):
         for i, v in enumerate(self.ability_cooldown):
             self.ability_cooldown[i] = max(0, v - elapsed_time)
-
-    ### Below this : only valid if previously set_in_game
+        for i, v in enumerate(self.status_cooldown):
+            self.status_cooldown[i] = max(0, v - elapsed_time)
+            if self.status_cooldown[i] == 0:
+                self.status[i].status_end(self)
+                self.status.pop(i)
+                self.status_cooldown.pop(i)
 
     def step_to(self, target):
         return min(self.tile.neighbours(), key = lambda x: x.dist(target))
@@ -102,11 +137,12 @@ class Creature(SimpleSprite, CascadeElement):
 
     def use_ability(self, ability, target):
         ability.apply_ability(self, target)
-        self.next_action += 100
         if ability.cooldown:
             self.ability_cooldown[ self.abilities.index(ability) ] = ability.cooldown
-        if self.is_pc:
-            self.game.new_turn()
+        if not ability.is_instant:
+            self.next_action += 100
+            if self.is_pc and not ability.is_instant:
+                self.game.new_turn()
 
     def take_damage(self, number):
         if self.shield:
@@ -153,28 +189,6 @@ class Creature(SimpleSprite, CascadeElement):
         CascadeElement.erase(self)
         SimpleSprite.erase(self)
 
-    def dict_dump(self):
-        items = self.items.copy()
-        for item in self.items:
-            item.unequip()
-        return {
-            'items': [item.key for item in self.items],
-            'health':self.health, 
-            'defkey':self.defkey
-            }
-        for item in items:
-            item.equip(self)
-
-    @staticmethod 
-    def dict_load(data, items):
-        c = Creature(data['defkey'])
-        c.health = data['health']
-        for key in data['items']:
-            for item in items:
-                if item.key == key and not item.equipped_to:
-                    item.equip(c)
-        c.is_pc = True
-        return c
 
 
 DEFS = {
@@ -185,7 +199,7 @@ DEFS = {
         'damage': 16,
         'speed': 10,
         'name': 'Fighter',
-        'abilities': [ShieldAbility(name = 'Shield', image_name='icons/shield-icon.png', image_cd='icons/shield-icon-cd.png', ability_range=1, power=8, damagefactor=0.5, cooldown=300)],
+        'abilities': ['Shield'],
     },
     'Barbarian': {
         'portrait': 'Barbarian.png',
@@ -195,7 +209,7 @@ DEFS = {
         'speed': 10,
         'is_pc': True,
         'name': 'Barbarian',
-        'abilities': [NovaAbility(name = 'Cleave', image_name='icons/cleave.png', ability_range=1.01, damagefactor=1.2, cooldown=200, need_los=True)]
+        'abilities': ['Cleave']
     },
     'Archer': {
         'portrait': 'Archer.png',
@@ -204,7 +218,7 @@ DEFS = {
         'damage': 12,
         'speed': 12,
         'name': 'Archer',
-        'abilities': [ DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damagefactor=1, need_los=True) ],
+        'abilities': ['Long bow'],
     },
     'Wizard': {
         'portrait': 'Wizard.png',
@@ -213,7 +227,7 @@ DEFS = {
         'damage': 10,
         'speed': 8,
         'name': 'Wizard',
-        'abilities': [ AoeAbility(name = 'Fireball', image_name = 'icons/fireball.png', image_cd='icons/fireball-cd.png', ability_range = 4, damagefactor=1.5, aoe=0.75, need_los = True, cooldown=400), BoltAbility(name = 'Lightning', image_name = 'icons/lightning.png', image_cd='icons/lightning-cd.png', ability_range = 5, damagefactor=1.25, cooldown=200) ],
+        'abilities': ['Fireball', 'Lightning'],
     },
 
 
@@ -246,7 +260,7 @@ DEFS = {
         'damage': 5,
         'speed': 7,
         'name': 'Skeleton',
-        'abilities': [  DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 4, damagefactor=1, need_los = True)  ],
+        'abilities': ['Short bow'],
     },
     'Necromancer': {
         'is_ranged': True,
@@ -257,6 +271,6 @@ DEFS = {
         'speed': 7,
         'name': 'Necromancer',
         'description': 'Can raise undead',
-        'abilities': [ Invocation(name='Raise undead', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Skeleton', ability_range=2, cooldown=300) ],
+        'abilities': ['Raise Undead'],
     }
 }

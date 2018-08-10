@@ -183,10 +183,12 @@ class InfoDisplay (CascadeElement):
         self.speed.rect.move_ip(basex + 80, basey + 256) 
         self.speed_stat = TextSprite('', '#ffffff', basex + 116, basey + 260)
         self.ability_display = AbilityDisplay(basex, basey + 288)
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description]
+        self.status_effect_display = StatusEffectDisplay(basex, basey + 384)
+        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.status_effect_display]
 
     def update(self, creature):
         self.ability_display.update(creature)
+        self.status_effect_display.update(creature)
         if not creature:
             self.erase()
             return
@@ -207,12 +209,29 @@ class AbilityDisplay (CascadeElement):
         self.subsprites = []
         for i, ability in enumerate(creature.abilities):
             if creature.ability_cooldown[i]:
-                text = '<Wait %d turn(s)>' % ceil(creature.ability_cooldown[i] / 100)
+                text = 'Cooldown <%d>' % ceil(creature.ability_cooldown[i] / 100)
                 image = ability.image_cd
             else:
                 text = ability.name
                 image = ability.image_name
             sprite = SimpleSprite(image)
+            sprite.rect.x, sprite.rect.y = (self.basex , self.basey + 32 * i)
+            self.subsprites.append(sprite)
+            text_sprite = TextSprite(text, '#ffffff', self.basex + 38, self.basey + 4 + 32 * i)
+            self.subsprites.append(text_sprite)
+        self.display()
+
+class StatusEffectDisplay (CascadeElement):
+    def __init__ (self, basex, basey):
+        super().__init__()
+        self.basex = basex
+        self.basey = basey
+    def update(self, creature):
+        self.erase()
+        self.subsprites = []
+        for i, status in enumerate(creature.status):
+            text = '%s <%d>' % (status.name, ceil(creature.status_cooldown[i] / 100))
+            sprite = SimpleSprite(status.image_name)
             sprite.rect.x, sprite.rect.y = (self.basex , self.basey + 32 * i)
             self.subsprites.append(sprite)
             text_sprite = TextSprite(text, '#ffffff', self.basex + 38, self.basey + 4 + 32 * i)

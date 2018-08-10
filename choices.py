@@ -1,4 +1,5 @@
 import random
+import os
 import items
 
 def get_question(key):
@@ -66,15 +67,17 @@ class GameOver(Choice):
     def get_choices(self):
         return ['Back to main menu']
     def choice_one(self):
-        world_interface.erase_all()
-        world_interface.done()
+        os.unlink('save.json')
+        self.world_interface.erase()
+        self.world_interface.done()
 
 class FightChoice(Choice):
     REWARD = 30
     def roll(self):
-        self.rolls = [random.randint(2,7)]
+        self.rolls = [random.randint(2,7), random.randint(0,5)]
     def _init(self):
-        self.mobs = [ ('Skeleton', (i, -6 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1) ]
+        self.mobs = [ ('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1) ]
+        self.mobs += [ ('SkeletonArcher', (i, -6 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ] 
         if self.rolls[0] < 4:
             self.mobs.append(('Necromancer', (0, -7)))
 

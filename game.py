@@ -91,7 +91,7 @@ class GameTile():
                 current_tile = forward_tiles[-1]
             else:
                 if self != other and current_tile == other and go_through:
-                    for tile in current_tile.ray_cast(current_tile + current_tile - self):
+                    for tile in current_tile.raycast(current_tile + current_tile - self):
                         yield tile
                 break
         else:
@@ -146,6 +146,9 @@ class TargetInterface(Interface):
     def update(self, mouse_pos):
         self.father.game.update(mouse_pos)
         range_hint = self.father.game.get_range_hint(self.father.game.active_pc, self.ability)
+        for target in range_hint:
+            self.father.game.arena.board[target].animate('tiles/GreyTile2.png')
+        range_hint = self.father.game.get_splash_hint(self.father.game.active_pc, self.ability, self.target)
         for target in range_hint:
             self.father.game.arena.board[target].animate('tiles/Yellow2.png')
         for target in self.valid_targets:
@@ -203,14 +206,15 @@ class AbilityDisplay (CascadeElement):
         self.erase()
         self.subsprites = []
         for i, ability in enumerate(creature.abilities):
-            ability.rect.x, ability.rect.y = (self.basex , self.basey + 32 * i)
             if creature.ability_cooldown[i]:
                 text = '<Wait %d turn(s)>' % ceil(creature.ability_cooldown[i] / 100)
-                ability.animate(ability.image_cd)
+                image = ability.image_cd
             else:
                 text = ability.name
-                ability.animate(ability.image_name)
-            self.subsprites.append(ability)
+                image = ability.image_name
+            sprite = SimpleSprite(image)
+            sprite.rect.x, sprite.rect.y = (self.basex , self.basey + 32 * i)
+            self.subsprites.append(sprite)
             text_sprite = TextSprite(text, '#ffffff', self.basex + 38, self.basey + 4 + 32 * i)
             self.subsprites.append(text_sprite)
         self.display()
@@ -230,6 +234,52 @@ class LogDisplay (CascadeElement):
         self.lines.append(text)
         for line, sprite in zip(self.lines[-4:], self.line_sprites):
             sprite.set_text(line)
+
+class DamageLogDisplay (CascadeElement):
+    def __init__ (self):
+        self.lines = [(None, None, 0)] * 6
+        self.number_sprites = [ TextSprite('', '#ffffff', 848, 138 + 32 * i) for i in range(6) ]
+        self.author_sprites = [
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+            SimpleSprite('tiles/Skeleton.png'),
+        ]
+        self.mean_sprites = [
+            SimpleSprite('icons/sword.png'),
+            SimpleSprite('icons/sword.png'),
+            SimpleSprite('icons/sword.png'),
+            SimpleSprite('icons/sword.png'),
+            SimpleSprite('icons/sword.png'),
+            SimpleSprite('icons/sword.png'),
+        ]
+        self.basex, self.basey = 780, 132 
+        for i in range(6):
+            self.author_sprites[i].rect.x = self.basex
+            self.author_sprites[i].rect.y = self.basey + 32 * i
+            self.mean_sprites[i].rect.x = self.basex + 32 
+            self.mean_sprites[i].rect.y = self.basey + 32 * i
+        self.subsprites = []
+    def update(self):
+        self.erase()
+        self.subsprites = []
+        for i, line in enumerate(self.lines):
+            if line[0]:
+                self.author_sprites[i].animate(line[0])
+                self.subsprites.append(self.author_sprites[i]) 
+            if line[1]:
+                self.mean_sprites[i].animate(line[1])
+                self.subsprites.append(self.mean_sprites[i]) 
+            if line[2]:
+                self.number_sprites[i].set_text(str(line[2]))
+                self.subsprites.append(self.number_sprites[i]) 
+        self.display()
+
+    def push_line(self, image1, image2, number):
+        self.lines.append((image1, image2, number))
+        self.lines.pop(0)
 
 class NextToActDisplay (CascadeElement):
     def __init__ (self):
@@ -267,8 +317,8 @@ class Arena(CascadeElement):
             sprite.animate('tiles/GreyTile.png')
 
         #Highlight creatures
-        for creature in self.game.creatures.values():
-            self.board[creature.tile].animate('tiles/GreyTile2.png' if creature.is_pc else 'tiles/Red1.png')
+        #for creature in self.game.creatures.values():
+        #    self.board[creature.tile].animate('tiles/GreyTile2.png' if creature.is_pc else 'tiles/Red1.png')
         #Highlight active player
         if self.game.active_pc:
             self.board[self.game.active_pc.tile].animate('tiles/Green2.png')
@@ -286,11 +336,12 @@ class Game(CascadeElement):
         self.hover_display = InfoDisplay(18, 90)
         #self.active_display = InfoDisplay(18, 340)
         self.log_display = LogDisplay()
+        self.dmg_log_display = DamageLogDisplay()
         self.bg = SimpleSprite('bg.png')
         self.to_act_display = NextToActDisplay()
         self.hover_xair = SimpleSprite('icons/target.png')
         self.selected_xair = SimpleSprite('icons/select.png')
-        self.subsprites = [self.bg, self.hover_display, self.log_display, self.arena, self.to_act_display, self.hover_xair, self.selected_xair]
+        self.subsprites = [self.bg, self.hover_display, self.log_display, self.dmg_log_display, self.arena, self.to_act_display, self.hover_xair, self.selected_xair]
         #Will be set by new turn, only here declaring
         self.active_pc = None
         self.selected = None
@@ -338,6 +389,7 @@ class Game(CascadeElement):
         tile = self.arena.get_tile_for_mouse(mouse_pos)
         cr = self.creatures.get(tile, self.creatures.get(self.selected, self.active_pc))
         self.hover_display.update(cr)
+        self.dmg_log_display.update()
         for cr in self.creatures.values():
             cr.update()
         self.arena.update(mouse_pos)
@@ -361,6 +413,10 @@ class Game(CascadeElement):
 
     def get_range_hint(self, creature, ability):
         valid_range = [tile for tile in self.arena.board.keys() if ability.range_hint(creature, tile)]
+        return valid_range
+
+    def get_splash_hint(self, creature, ability, selected):
+        valid_range = [tile for tile in self.arena.board.keys() if ability.splash_hint(creature, selected, tile)]
         return valid_range
 
 

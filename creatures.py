@@ -293,5 +293,16 @@ DEFS = {
         'name': 'Necromancer',
         'description': 'Can raise undead',
         'abilities': ['Raise Undead'],
+    },
+    'Demon': {
+        'is_ranged': False,
+        'portrait': 'Demon.png',
+        'image_name': 'tiles/Demon.png',
+        'health': 200,
+        'damage': 15,
+        'speed': 10,
+        'name': 'Demon',
+        'description': 'Very tough opponent',
+        'abilities': ['Fireball'],
     }
 }

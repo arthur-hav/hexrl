@@ -89,6 +89,19 @@ class FightChoice(Choice):
     def choice_one(self):
         return self.world_interface.start_game(self.mobs)
 
+class DemonChoice(Choice):
+    REWARD = 30
+    def _init(self):
+        self.mobs = [('Demon', (0, -6))]
+
+    def get_text(self):
+        return 'You encounter a major demon.'
+
+    def get_choices(self):
+        return ['Fight']
+    def choice_one(self):
+        return self.world_interface.start_game(self.mobs)
+
 
 class TollChoice(FightChoice):
     REWARD = 20
@@ -175,6 +188,7 @@ class StartChoice(Choice):
 NORMAL_CHOICES = {
     'gobelin_squad': TollChoice,
     'undead': FightChoice,
+    'demon': DemonChoice,
     'shop': ShopChoice
 }
 SPECIAL_CHOICES = {

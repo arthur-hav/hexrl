@@ -93,6 +93,8 @@ class Creature(SimpleSprite, CascadeElement):
     def tick(self, elapsed_time):
         for i, v in enumerate(self.ability_cooldown):
             self.ability_cooldown[i] = max(0, v - elapsed_time)
+        for status in self.status:
+            status.tick(self, elapsed_time)
         for i, v in enumerate(self.status_cooldown):
             self.status_cooldown[i] = max(0, v - elapsed_time)
             if self.status_cooldown[i] == 0:
@@ -114,10 +116,15 @@ class Creature(SimpleSprite, CascadeElement):
             return
         if destination in self.game.creatures and self.is_pc != self.game.creatures[destination].is_pc:
             return self.attack(destination)
+        elif self.speed <= 0:
+            return
         elif destination in self.game.creatures:
             #Swap places
-            del self.game.creatures[self.tile]
-            self.game.creatures[destination].move_or_attack(self.tile)
+            other_cr = self.game.creatures[destination]
+            other_cr.tile = self.tile
+            other_cr.rect.x, other_cr.rect.y = other_cr.tile.display_location()
+            other_cr.game.creatures[self.tile] = other_cr
+            del self.game.creatures[destination]
         else:
             del self.game.creatures[self.tile]
         self.tile = destination
@@ -154,6 +161,8 @@ class Creature(SimpleSprite, CascadeElement):
             self.health -= number
         self.frames.extend(['tiles/Hit.png', self.image_name])
         if self.health <= 0:
+            for status in self.status:
+                status.status_end(self)
             self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.tile]
             self.erase()
@@ -165,7 +174,7 @@ class Creature(SimpleSprite, CascadeElement):
         #FLEEING
         if self.is_ranged and self.tile.dist(nearest_pc.tile) < 1.25:
             tile = self.step_away(nearest_pc.tile)
-            if tile:
+            if tile and tile.in_boundaries() and self.speed > 0:
                 self.move_or_attack(tile)
                 return
         #CASTING
@@ -179,7 +188,10 @@ class Creature(SimpleSprite, CascadeElement):
             self.use_ability(self.abilities[ability_num], target)
             return
         #HUNTING
-        self.move_or_attack(self.step_to(nearest_pc.tile))
+        if self.speed > 0 or nearest_pc.tile.dist(self.tile) < 1.25:
+            self.move_or_attack(self.step_to(nearest_pc.tile))
+            return
+        self.next_action += 50
 
     def display(self):
         CascadeElement.display(self)
@@ -228,6 +240,15 @@ DEFS = {
         'speed': 8,
         'name': 'Wizard',
         'abilities': ['Fireball', 'Lightning'],
+    },
+    'Enchantress': {
+        'portrait': 'Elf.png',
+        'image_name': 'tiles/Elf.png',
+        'health': 70,
+        'damage': 10,
+        'speed': 10,
+        'name': 'Enchantress',
+        'abilities': ['Root'],
     },
 
 

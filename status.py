@@ -12,6 +12,9 @@ class Status(SimpleSprite):
     def status_end(self, creature):
         pass
 
+    def tick(self, creature, time):
+        pass
+
 class Bloodlust(Status):
     def status_start(self, creature):
         creature.damage += 8
@@ -19,6 +22,23 @@ class Bloodlust(Status):
     def status_end(self, creature):
         creature.damage -= 8
 
+class Root(Status):
+    def status_start(self, creature):
+        self.old_speed = creature.speed
+        self.root_time = 0
+        creature.speed = 0
+
+    def status_end(self, creature):
+        creature.speed += self.old_speed
+
+    def tick(self, creature, time):
+        self.root_time += time
+        if self.root_time > 20:
+            creature.take_damage(self.root_time // 20)
+            self.root_time %= 20 
+
+
 STATUSES = {
-    'Bloodlust': (Bloodlust, ('Bloodlust', 'icons/bloodlust.png'))
+    'Bloodlust': (Bloodlust, ('Bloodlust', 'icons/bloodlust.png')),
+    'Root': (Root, ('Root', 'icons/root.png')),
 }

@@ -76,10 +76,10 @@ class FightChoice(Choice):
     def roll(self):
         self.rolls = [random.randint(2,7), random.randint(0,5)]
     def _init(self):
-        self.mobs = [ ('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1) ]
-        self.mobs += [ ('SkeletonArcher', (i, -6 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ] 
+        self.mobs = [ ('Skeleton', (i, -4 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1) ]
+        self.mobs += [ ('SkeletonArcher', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ] 
         if self.rolls[0] < 4:
-            self.mobs.append(('Necromancer', (0, -7)))
+            self.mobs.append(('Necromancer', (0, -6)))
 
     def get_text(self):
         return 'You find a pack of undead creatures. They are willing to make you join their army.'
@@ -96,7 +96,7 @@ class TollChoice(FightChoice):
         self.rolls = [exp_reward(), random.randint(3,5)]
 
     def _init(self):
-        self.mobs = [ ('Gobelin', (i, -6 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ]
+        self.mobs = [ ('Gobelin', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ]
         self.toll = self.rolls[0] // 50
 
     def get_text(self):

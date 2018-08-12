@@ -33,7 +33,7 @@ class BoltAbility(Ability):
     def apply_ability(self, creature, target):
         damage = self.power + round(creature.damage * self.damagefactor)
         for tile in creature.tile.raycast(target, go_through=True):
-            if tile.dist(creature.tile) > self.ability_range:
+            if tile.dist(creature.tile) > self.ability_range + 0.25:
                 break
             target_cr = creature.game.creatures.get(tile, None)
             if target_cr and target_cr.is_pc != creature.is_pc:
@@ -114,18 +114,28 @@ class StatusAbility(Ability):
         status_class = STATUSES[self.name][0]
         status_args = STATUSES[self.name][1]
         status_effect = status_class(*status_args)
-        creature.status.append(status_effect)
-        creature.status_cooldown.append(self.duration)
-        status_effect.status_start(creature)
+        target_cr = creature.game.creatures[target]
+        for i, status in enumerate(target_cr.status):
+            if status_class == status.__class__:
+                target_cr.status_cooldown[i] = max(target_cr.status_cooldown[i], self.duration)
+                return
+        target_cr.status.append(status_effect)
+        target_cr.status_cooldown.append(self.duration)
+        status_effect.status_start(target_cr)
+
+class EnnemyStatusAbility(StatusAbility):
+    def is_valid_target(self, creature, target):
+        return super().is_valid_target(creature, target) and creature.game.creatures[target].is_pc != creature.is_pc
 
 
 ABILITIES = {
-        'Raise undead': Invocation(name='Raise undead', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Skeleton', ability_range=2, cooldown=300),
-        'Short bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 4, damagefactor=1, need_los = True), 
-        'Long bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damagefactor=1, need_los = True),
-        'Fireball': AoeAbility(name = 'Fireball', image_name = 'icons/fireball.png', image_cd='icons/fireball-cd.png', ability_range = 4, power=5, damagefactor=1, aoe=0.75, need_los = True, cooldown=400),
-        'Lightning': BoltAbility(name = 'Lightning', image_name = 'icons/lightning.png', image_cd='icons/lightning-cd.png', ability_range = 5, power=2, damagefactor=1, cooldown=200),
-        'Cleave':NovaAbility(name = 'Cleave', image_name='icons/cleave.png', ability_range=1.01, damagefactor=1.2, cooldown=200, need_los=True),
-        'Shield':ShieldAbility(name = 'Shield', image_name='icons/shield-icon.png', image_cd='icons/shield-icon-cd.png', ability_range=1, power=8, damagefactor=0.5, cooldown=300),
-        'Bloodlust': StatusAbility('Bloodlust', 'icons/bloodlust.png', image_cd='icons/bloodlust-cd.png', ability_range=0, cooldown=700, duration=250, is_instant=True)
+        'Raise Undead': Invocation(name='Raise undead', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Skeleton', ability_range=2, cooldown=300, description='Places a skeleton on an empty tile of the battlefield.'),
+        'Short bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 4, damagefactor=1, need_los = True, description = 'Ranged attack for equal amount to melee damage'), 
+        'Long bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damagefactor=1, need_los = True, description = 'Ranged attack for equal amount to melee damage'),
+        'Fireball': AoeAbility(name = 'Fireball', image_name = 'icons/fireball.png', image_cd='icons/fireball-cd.png', ability_range = 4, power=5, damagefactor=1, aoe=0.75, need_los = True, cooldown=400, description = 'Ranged attack inflicting splash damage on adjacent ennemies.'),
+        'Lightning': BoltAbility(name = 'Lightning', image_name = 'icons/lightning.png', image_cd='icons/lightning-cd.png', ability_range = 5, power=2, damagefactor=1, cooldown=200, description='Ranged attack passing through a line of ennemies, damaging them.'),
+        'Cleave':NovaAbility(name = 'Cleave', image_name='icons/cleave.png', ability_range=1.01, damagefactor=1.2, cooldown=200, need_los=True, description='Simultaneously attack all ennemies in melee range'),
+        'Shield':ShieldAbility(name = 'Shield', image_name='icons/shield-icon.png', image_cd='icons/shield-icon-cd.png', ability_range=1, power=8, damagefactor=0.5, cooldown=300, description='Shields an ally for a small amount of damage.'),
+        'Bloodlust': StatusAbility('Bloodlust', 'icons/bloodlust.png', image_cd='icons/bloodlust-cd.png', ability_range=0, cooldown=700, duration=250, is_instant=True, description='Greatly enhances damage for a short period. Cast is instantaneous.'),
+        'Root': EnnemyStatusAbility('Root', 'icons/root.png', image_cd='icons/root-cd.png', ability_range=5, cooldown=200, duration=300, description='Target is made unable to move for a duration, and takes damage over time.'),
 }

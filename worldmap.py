@@ -138,7 +138,7 @@ class WorldInterface(Interface, CascadeElement):
             Creature('Barbarian', is_pc=True),
             Creature('Archer', is_pc=True),
             Creature('Wizard', is_pc=True),
-            Creature('Archer', is_pc=True),
+            Creature('Enchantress', is_pc=True),
         ]
         self.pick()
 

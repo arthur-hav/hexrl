@@ -40,12 +40,14 @@ class GameTile():
         return sqrt((self._x-other._x)**2 + (self.y-other.y)**2)
 
     def neighbours(self):
-        return [ self + GameTile(0, -1), 
-            self + GameTile(1, -0.5), 
-            self + GameTile(1, 0.5), 
+        return [ 
+            self + GameTile(-1, 0.5),
             self + GameTile(0, 1), 
-            self + GameTile(-1, 0.5), 
-            self + GameTile(-1, -0.5) ]
+            self + GameTile(1, 0.5),
+            self + GameTile(-1, -0.5),
+            self + GameTile(0, -1), 
+            self + GameTile(1, -0.5), 
+            ]
     
     def in_boundaries(self):
         return self.dist(GameTile(0,0)) < self.MAP_RADIUS
@@ -110,7 +112,7 @@ class HelpInterface(Interface, CascadeElement):
 Use special abilities with numpad [1-3], confirm target with mouse click or [Enter].
 [0] to idle for half a turn.
 [Escape] to cancel or quit.""")
-        self.subsprites = [t1]
+        self.subsprites = [t]
         self.display()
 
     def cancel(self, mouse_pos):
@@ -344,8 +346,9 @@ class Arena(CascadeElement):
     def __init__(self, game):
         self.game = game
         self.board = {}
-        for i in range(-10, 10):
-            for j in range(-10, 10):
+        self.step_hints = []
+        for i in range(-8, 8):
+            for j in range(-8, 8):
                 tile = GameTile(i, j + (i % 2)/2)
                 if tile.in_boundaries():
                     self.board[tile] = SimpleSprite('tiles/GreyTile.png')
@@ -353,15 +356,25 @@ class Arena(CascadeElement):
         self.subsprites = list(self.board.values())
 
     def update(self, mouse_pos):
+        for step in self.step_hints:
+            step.erase()
+        self.step_hints = []
         for sprite in self.board.values():
             sprite.animate('tiles/GreyTile.png')
 
-        #Highlight creatures
-        #for creature in self.game.creatures.values():
-        #    self.board[creature.tile].animate('tiles/GreyTile2.png' if creature.is_pc else 'tiles/Red1.png')
         #Highlight active player
         if self.game.active_pc:
             self.board[self.game.active_pc.tile].animate('tiles/Green2.png')
+            for i, neighbour in enumerate(self.game.active_pc.tile.neighbours()):
+                if not neighbour.in_boundaries() or neighbour in self.game.creatures:
+                    continue
+                x, y = self.board[neighbour].rect.x, self.board[neighbour].rect.y
+                text = TextSprite('[%d]' % (i + 4), '#00FF00', x + 4, y + 4)
+                for surf in text.textsprites:
+                    surf.image.set_alpha(120)
+                self.step_hints.append(text)
+                text.display()
+
 
     def get_tile_for_mouse(self, mouse_pos):
         for tile, sprite in self.board.items():
@@ -486,19 +499,19 @@ class GameInterface (Interface):
         pass
 
     def go_s(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[3])
+        self.go(self.game.active_pc.tile.neighbours()[1])
 
     def go_sw(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[4])
-
-    def go_nw(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[5])
-
-    def go_n(self, _):
         self.go(self.game.active_pc.tile.neighbours()[0])
 
+    def go_nw(self, _):
+        self.go(self.game.active_pc.tile.neighbours()[3])
+
+    def go_n(self, _):
+        self.go(self.game.active_pc.tile.neighbours()[4])
+
     def go_ne(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[1])
+        self.go(self.game.active_pc.tile.neighbours()[5])
 
     def go_se(self, _):
         self.go(self.game.active_pc.tile.neighbours()[2])

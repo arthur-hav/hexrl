@@ -182,7 +182,7 @@ class TextSprite ():
     """ Text sprites, can be re-used through set_text """
     def __init__ (self, text, color, x=0, y=0, maxlen=None):
         self.font = pygame.font.Font("data/font/Vera.ttf", 8)
-        self.color = color
+        self.color = [color] if isinstance(color, str) else color
         self.maxlen = maxlen
         self.x = x
         self.y = y
@@ -196,7 +196,7 @@ class TextSprite ():
         j = 0
         for word in words:
             sprite = pygame.sprite.Sprite()
-            sprite.image = self.font.render(word, False, pygame.Color(self.color))
+            sprite.image = self.font.render(word, False, pygame.Color(*self.color))
             (w, h) = self.font.size (word)
             sprite.image = pygame.transform.scale(sprite.image, (w * 2, h * 2)) 
             rect = sprite.image.get_rect()

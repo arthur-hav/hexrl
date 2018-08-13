@@ -130,6 +130,7 @@ class EnnemyStatusAbility(StatusAbility):
 
 ABILITIES = {
         'Raise Undead': Invocation(name='Raise undead', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Skeleton', ability_range=2, cooldown=300, description='Places a skeleton on an empty tile of the battlefield.'),
+        'Call Imp': Invocation(name='Call Imp', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Imp', ability_range=2, cooldown=600, description='Places an imp on an empty tile of the battlefield.'),
         'Short bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 4, damagefactor=1, need_los = True, description = 'Ranged attack for equal amount to melee damage'), 
         'Long bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damagefactor=1, need_los = True, description = 'Ranged attack for equal amount to melee damage'),
         'Fireball': AoeAbility(name = 'Fireball', image_name = 'icons/fireball.png', image_cd='icons/fireball-cd.png', ability_range = 4, power=5, damagefactor=1, aoe=0.75, need_los = True, cooldown=400, description = 'Ranged attack inflicting splash damage on adjacent ennemies.'),

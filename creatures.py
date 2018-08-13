@@ -303,6 +303,17 @@ DEFS = {
         'speed': 10,
         'name': 'Demon',
         'description': 'Very tough opponent',
-        'abilities': ['Fireball'],
-    }
+        'abilities': ['Fireball', 'Call Imp'],
+    },
+    'Imp': {
+        'is_ranged': True,
+        'portrait': 'Imp.png',
+        'image_name': 'tiles/Imp.png',
+        'health': 80,
+        'damage': 10,
+        'speed': 10,
+        'name': 'Imp',
+        'description': 'Small caster demon',
+        'abilities': ['Lightning'],
+    },
 }

@@ -154,10 +154,10 @@ class TargetInterface(Interface):
         self.target = self.valid_targets[index]
     def update(self, mouse_pos):
         self.father.game.update(mouse_pos)
-        range_hint = self.father.game.get_range_hint(self.father.game.active_pc, self.ability)
+        range_hint = self.father.game.get_range_hint(self.father.game.to_act, self.ability)
         for target in range_hint:
             self.father.game.arena.board[target].animate('tiles/GreyTile2.png')
-        range_hint = self.father.game.get_splash_hint(self.father.game.active_pc, self.ability, self.target)
+        range_hint = self.father.game.get_splash_hint(self.father.game.to_act, self.ability, self.target)
         for target in range_hint:
             self.father.game.arena.board[target].animate('tiles/Yellow2.png')
         for target in self.valid_targets:
@@ -401,7 +401,7 @@ class Game(CascadeElement):
         self.selected_xair = SimpleSprite('icons/select.png')
         self.subsprites = [self.bg, self.hover_display, self.log_display, self.dmg_log_display, self.arena, self.to_act_display, self.hover_xair, self.selected_xair, self.cursor]
         #Will be set by new turn, only here declaring
-        self.active_pc = None
+        self.to_act = None
         self.selected = None
         self.spawn_creatures(pc_list, mob_list)
         self.log_display.push_text('Press [?] for help and keybindings')
@@ -422,9 +422,6 @@ class Game(CascadeElement):
             self.subsprites.append(c)
             i += 2
 
-    def move_pc(self, tile):
-        self.creatures[self.active_pc.tile].move_or_attack(tile)
-
     def apply_ability(self, ability, creature, target):
         creature.use_ability(ability, target)
 
@@ -432,15 +429,15 @@ class Game(CascadeElement):
         if self.is_over():
             return
         self.selected = None
-        to_act = min(self.creatures.values(), key= lambda x: x.next_action)
-        elapsed_time = to_act.next_action - self.turn
+        self.to_act = min(self.creatures.values(), key= lambda x: x.next_action)
+        elapsed_time = self.to_act.next_action - self.turn
         for creature in list(self.creatures.values()):
             creature.tick(elapsed_time)
         #The creature to act got killed by a dot
-        if min(self.creatures.values(), key= lambda x: x.next_action) != to_act:
+        if min(self.creatures.values(), key= lambda x: x.next_action) != self.to_act:
             self.new_turn()
             return
-        self.turn = to_act.next_action
+        self.turn = self.to_act.next_action
 
     def update(self, mouse_pos):
         to_act = min(self.creatures.values(), key= lambda x: x.next_action)
@@ -449,7 +446,7 @@ class Game(CascadeElement):
             self.new_turn()
         else:
             self.to_act_display.update(self)
-            self.active_pc = to_act
+            self.to_act = to_act
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10 
         tile = self.arena.get_tile_for_mouse(mouse_pos)
         creature = self.creatures.get(tile, self.creatures.get(self.selected, to_act))
@@ -507,55 +504,65 @@ class GameInterface (Interface):
         pass
 
     def go_s(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[1])
+        self.go(1)
 
     def go_sw(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[0])
+        self.go(0)
 
     def go_nw(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[3])
+        self.go(3)
 
     def go_n(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[4])
+        self.go(4)
 
     def go_ne(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[5])
+        self.go(5)
 
     def go_se(self, _):
-        self.go(self.game.active_pc.tile.neighbours()[2])
+        self.go(2)
 
-    def go(self, tile):
-        self.game.move_pc(tile)
+    def go(self, index):
+        if not self.game.to_act or not self.game.to_act.is_pc:
+            return
+        self.game.to_act.move_or_attack(self.game.to_act.tile.neighbours()[index])
         if self.game.is_over():
             self.game.erase()
             self.done()
 
     def pass_turn(self, _):
-        self.game.active_pc.next_action += 50
+        if not self.game.to_act or not self.game.to_act.is_pc:
+            return
+        self.game.to_act.next_action += 100
         self.game.new_turn()
 
     def ability_one(self, mouse_pos):
-        if len(self.game.active_pc.abilities) < 1:
+        if not self.game.to_act or not self.game.to_act.is_pc:
             return
-        if self.game.active_pc.ability_cooldown[0] > 0:
+        if len(self.game.to_act.abilities) < 1:
             return
-        pc = self.game.active_pc
+        if self.game.to_act.ability_cooldown[0] > 0:
+            return
+        pc = self.game.to_act
         self._ability(pc, pc.abilities[0])
 
     def ability_two(self, mouse_pos):
-        if len(self.game.active_pc.abilities) < 2:
+        if not self.game.to_act or not self.game.to_act.is_pc:
             return
-        if self.game.active_pc.ability_cooldown[1] > 0:
+        if len(self.game.to_act.abilities) < 2:
             return
-        pc = self.game.active_pc
+        if self.game.to_act.ability_cooldown[1] > 0:
+            return
+        pc = self.game.to_act
         self._ability(pc, pc.abilities[1])
 
     def ability_three(self, mouse_pos):
-        if len(self.game.active_pc.abilities) < 3:
+        if not self.game.to_act or not self.game.to_act.is_pc:
             return
-        if self.game.active_pc.ability_cooldown[2] > 0:
+        if len(self.game.to_act.abilities) < 3:
             return
-        pc = self.game.active_pc
+        if self.game.to_act.ability_cooldown[2] > 0:
+            return
+        pc = self.game.to_act
         self._ability(pc, pc.abilities[2])
 
     def on_click(self, mouse_pos):
@@ -565,7 +572,7 @@ class GameInterface (Interface):
         self.game.selected = tile
 
     def _ability(self, pc, ability):
-        valid_targets = self.game.get_valid_targets(self.game.active_pc, ability)
+        valid_targets = self.game.get_valid_targets(self.game.to_act, ability)
         if not valid_targets:
             self.game.log_display.push_text('No valid target.')
             return
@@ -585,7 +592,7 @@ class GameInterface (Interface):
 
     def on_return(self, defunct):
         if getattr(defunct, 'target', None):
-            self.game.apply_ability(defunct.ability, self.game.active_pc, defunct.target)
+            self.game.apply_ability(defunct.ability, self.game.to_act, defunct.target)
         self.game.cursor.animate('icons/magnifyingglass.png')
         if self.game.is_over():
             self.game.erase()

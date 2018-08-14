@@ -29,7 +29,7 @@ class Display():
         self.key_handlers = defaultdict(list)
         self.mouse_handlers = []
         self.update_handlers = []
-        self.sprites = pygame.sprite.LayeredUpdates(())
+        self.sprites = pygame.sprite.OrderedUpdates(())
 
         #clock = pygame.time.Clock()
 

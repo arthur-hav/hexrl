@@ -431,7 +431,10 @@ class Game(CascadeElement):
             return
         self.game_frame = 0
         self.selected = None
-        self.to_act = min(self.creatures.values(), key= lambda x: x.next_action)
+        to_act = min(self.creatures.values(), key= lambda x: x.next_action)
+        if to_act == self.to_act:
+            return
+        self.to_act = to_act
         elapsed_time = self.to_act.next_action - self.turn
         for creature in list(self.creatures.values()):
             creature.tick(elapsed_time)
@@ -443,11 +446,12 @@ class Game(CascadeElement):
 
     def update(self, mouse_pos):
         self.game_frame += 1
-        if not self.to_act.is_pc and self.game_frame > 5:
+        if not self.to_act.is_pc and self.game_frame == 5:
             self.to_act.ai_play()
-            self.new_turn()
         elif self.to_act.is_pc:
             self.to_act_display.update(self)
+        elif self.game_frame > 10:
+            self.new_turn()
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10 
         tile = self.arena.get_tile_for_mouse(mouse_pos)
         creature = self.creatures.get(tile, self.creatures.get(self.selected, self.to_act))
@@ -466,6 +470,8 @@ class Game(CascadeElement):
             self.selected_xair.display()
         else:
             self.selected_xair.erase()
+        self.cursor.erase()
+        self.cursor.display()
 
     def is_over(self):
         return all((c.is_pc for c in self.creatures.values())) or all((not c.is_pc for c in self.creatures.values()))

@@ -70,7 +70,7 @@ class Display():
             pos = pygame.mouse.get_pos()
             for handler in self.update_handlers:
                 handler(pos)
-            time.sleep(0.05)
+            time.sleep(0.020)
 
 DISPLAY = Display()
 

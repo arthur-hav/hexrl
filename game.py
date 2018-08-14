@@ -407,6 +407,7 @@ class Game(CascadeElement):
         self.log_display.push_text('Press [?] for help and keybindings')
         self.display()
         self.new_turn()
+        self.game_frame = 0
 
     def spawn_creatures(self, pcs, mobs):
         i = 0
@@ -428,6 +429,7 @@ class Game(CascadeElement):
     def new_turn(self):
         if self.is_over():
             return
+        self.game_frame = 0
         self.selected = None
         self.to_act = min(self.creatures.values(), key= lambda x: x.next_action)
         elapsed_time = self.to_act.next_action - self.turn
@@ -440,21 +442,20 @@ class Game(CascadeElement):
         self.turn = self.to_act.next_action
 
     def update(self, mouse_pos):
-        to_act = min(self.creatures.values(), key= lambda x: x.next_action)
-        if not to_act.is_pc:
-            to_act.ai_play()
+        self.game_frame += 1
+        if not self.to_act.is_pc and self.game_frame > 5:
+            self.to_act.ai_play()
             self.new_turn()
-        else:
+        elif self.to_act.is_pc:
             self.to_act_display.update(self)
-            self.to_act = to_act
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10 
         tile = self.arena.get_tile_for_mouse(mouse_pos)
-        creature = self.creatures.get(tile, self.creatures.get(self.selected, to_act))
+        creature = self.creatures.get(tile, self.creatures.get(self.selected, self.to_act))
         self.hover_display.update(creature, mouse_pos)
         self.dmg_log_display.update()
         for cr in self.creatures.values():
             cr.update()
-        self.arena.update(to_act, mouse_pos)
+        self.arena.update(self.to_act, mouse_pos)
         if tile:
             self.hover_xair.rect.x, self.hover_xair.rect.y = tile.display_location()
             self.hover_xair.display()

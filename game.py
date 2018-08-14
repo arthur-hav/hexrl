@@ -142,6 +142,7 @@ class TargetInterface(Interface):
             and self.father.game.selected in valid_targets else valid_targets[0]
         self.valid_targets = valid_targets
         self.ability = ability
+        self.father.game.cursor.animate('icons/target-cursor.png')
     def cancel(self, mouse_pos):
         self.target = None
         self.father.game.selected = None
@@ -369,7 +370,7 @@ class Arena(CascadeElement):
                 if not neighbour.in_boundaries() or neighbour in self.game.creatures:
                     continue
                 x, y = self.board[neighbour].rect.x, self.board[neighbour].rect.y
-                text = TextSprite('[%d]' % (i + 4), '#00FF00', x + 4, y + 4)
+                text = TextSprite('[%d]' % (i + 4), '#00FF00', x + 4, y + 6)
                 for surf in text.textsprites:
                     surf.image.set_alpha(120)
                 self.step_hints.append(text)
@@ -386,6 +387,7 @@ class Game(CascadeElement):
         self.turn = 0
         self.arena = Arena(self)
         self.creatures = {}
+        self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.hover_display = InfoDisplay(18, 90)
         self.log_display = LogDisplay()
         self.dmg_log_display = DamageLogDisplay()
@@ -393,7 +395,7 @@ class Game(CascadeElement):
         self.to_act_display = NextToActDisplay()
         self.hover_xair = SimpleSprite('icons/target.png')
         self.selected_xair = SimpleSprite('icons/select.png')
-        self.subsprites = [self.bg, self.hover_display, self.log_display, self.dmg_log_display, self.arena, self.to_act_display, self.hover_xair, self.selected_xair]
+        self.subsprites = [self.bg, self.hover_display, self.log_display, self.dmg_log_display, self.arena, self.to_act_display, self.hover_xair, self.selected_xair, self.cursor]
         #Will be set by new turn, only here declaring
         self.active_pc = None
         self.selected = None
@@ -443,6 +445,7 @@ class Game(CascadeElement):
             self.active_pc = to_act
 
     def update(self, mouse_pos):
+        self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10 
         tile = self.arena.get_tile_for_mouse(mouse_pos)
         creature = self.creatures.get(tile, self.creatures.get(self.selected, self.active_pc))
         self.hover_display.update(creature, mouse_pos)
@@ -578,6 +581,7 @@ class GameInterface (Interface):
     def on_return(self, defunct):
         if getattr(defunct, 'target', None):
             self.game.apply_ability(defunct.ability, self.game.active_pc, defunct.target)
+        self.game.cursor.animate('icons/magnifyingglass.png')
         if self.game.is_over():
             self.game.erase()
             self.done()

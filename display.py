@@ -21,6 +21,7 @@ class Display():
         #Initialize Everything
         pygame.init()
         self.screen = pygame.display.set_mode((960, 600)) #, pygame.FULLSCREEN|pygame.HWSURFACE)
+        pygame.mouse.set_visible(False)
         pygame.display.set_caption('HexRL')
         #pygame.mouse.set_visible(0)
         #Display The Background

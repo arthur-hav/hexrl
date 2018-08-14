@@ -108,10 +108,11 @@ class HelpInterface(Interface, CascadeElement):
             (K_ESCAPE, self.cancel),
             ])
         t = Tooltip()
-        t.set_text("""Move your adventurers with numpad [4-9] (4 goes southwest, 5 goes south etc.)
+        t.set_text("""The game mostly plays with numpad. 
+Use [4-9] to move or attack adjacent tile.
 Use special abilities with numpad [1-3], confirm target with mouse click or [Enter].
 [0] to idle for half a turn.
-[Escape] to cancel or quit.""")
+[Esc] to cancel or quit.""")
         self.subsprites = [t]
         self.display()
 
@@ -356,7 +357,7 @@ class Arena(CascadeElement):
                     self.board[tile].rect.move_ip(*tile.display_location())
         self.subsprites = list(self.board.values())
 
-    def update(self, mouse_pos):
+    def update(self, creature, mouse_pos):
         for step in self.step_hints:
             step.erase()
         self.step_hints = []
@@ -364,17 +365,20 @@ class Arena(CascadeElement):
             sprite.animate('tiles/GreyTile.png')
 
         #Highlight active player
-        if self.game.active_pc:
-            self.board[self.game.active_pc.tile].animate('tiles/Green2.png')
-            for i, neighbour in enumerate(self.game.active_pc.tile.neighbours()):
-                if not neighbour.in_boundaries() or neighbour in self.game.creatures:
-                    continue
-                x, y = self.board[neighbour].rect.x, self.board[neighbour].rect.y
-                text = TextSprite('[%d]' % (i + 4), '#00FF00', x + 4, y + 6)
-                for surf in text.textsprites:
-                    surf.image.set_alpha(120)
-                self.step_hints.append(text)
-                text.display()
+        self.board[creature.tile].animate('tiles/Green2.png')
+        if creature.is_pc:
+            self.keyboard_hint(creature.tile)
+
+    def keyboard_hint(self, tile):
+        for i, neighbour in enumerate(tile.neighbours()):
+            if not neighbour.in_boundaries() or neighbour in self.game.creatures:
+                continue
+            x, y = self.board[neighbour].rect.x, self.board[neighbour].rect.y
+            text = TextSprite('[%d]' % (i + 4), '#00FF00', x + 4, y + 6)
+            for surf in text.textsprites:
+                surf.image.set_alpha(120)
+            self.step_hints.append(text)
+            text.display()
 
 
     def get_tile_for_mouse(self, mouse_pos):
@@ -437,22 +441,23 @@ class Game(CascadeElement):
             self.new_turn()
             return
         self.turn = to_act.next_action
+
+    def update(self, mouse_pos):
+        to_act = min(self.creatures.values(), key= lambda x: x.next_action)
         if not to_act.is_pc:
             to_act.ai_play()
             self.new_turn()
         else:
             self.to_act_display.update(self)
             self.active_pc = to_act
-
-    def update(self, mouse_pos):
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10 
         tile = self.arena.get_tile_for_mouse(mouse_pos)
-        creature = self.creatures.get(tile, self.creatures.get(self.selected, self.active_pc))
+        creature = self.creatures.get(tile, self.creatures.get(self.selected, to_act))
         self.hover_display.update(creature, mouse_pos)
         self.dmg_log_display.update()
         for cr in self.creatures.values():
             cr.update()
-        self.arena.update(mouse_pos)
+        self.arena.update(to_act, mouse_pos)
         if tile:
             self.hover_xair.rect.x, self.hover_xair.rect.y = tile.display_location()
             self.hover_xair.display()

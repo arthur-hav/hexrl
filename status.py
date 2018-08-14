@@ -33,9 +33,9 @@ class Root(Status):
 
     def tick(self, creature, time):
         self.root_time += time
-        if self.root_time > 20:
-            creature.take_damage(self.root_time // 20)
-            self.root_time %= 20 
+        if self.root_time >= 100:
+            creature.take_damage(4)
+            self.root_time -= 100 
 
 
 STATUSES = {

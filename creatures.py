@@ -130,7 +130,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = destination
         self.rect.x, self.rect.y = self.tile.display_location()
         self.game.creatures[destination] = self
-        self.next_action += 1000 // self.speed
+        self.next_action += 100
         if self.is_pc:
             self.game.new_turn()
 
@@ -302,7 +302,7 @@ DEFS = {
         'damage': 15,
         'speed': 10,
         'name': 'Demon',
-        'description': 'Very tough opponent',
+        'description': 'Tough opponent',
         'abilities': ['Fireball', 'Call Imp'],
     },
     'Imp': {

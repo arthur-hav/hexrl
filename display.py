@@ -49,7 +49,6 @@ class Display():
 
     def main(self):
         while True:
-            self.sprites.draw(self.screen)
             pygame.display.flip()
             #Handle Input Events
             for event in pygame.event.get():
@@ -100,10 +99,6 @@ class CascadeElement():
         for sprite in self.subsprites:
             sprite.display()
 
-    def erase(self):
-        for sprite in self.subsprites:
-            sprite.erase()
-
 class SimpleSprite (pygame.sprite.Sprite):
     """ Simple sprites refreshed every frame."""
     #functions to create our resources
@@ -136,7 +131,7 @@ class SimpleSprite (pygame.sprite.Sprite):
         self.rect.x, self.rect.y = x, y
 
     def display(self):
-        DISPLAY.sprites.add (self)
+        DISPLAY.screen.blit(self.image, self.rect)
     
     def animate(self, frame_name):
         if frame_name == self.frame_name:
@@ -145,9 +140,6 @@ class SimpleSprite (pygame.sprite.Sprite):
         rect = self.image.get_rect()
         self.image = pygame.transform.scale(self.image, (rect.w * 2, rect.h * 2)) 
         self.frame_name = frame_name
-
-    def erase (self):
-        DISPLAY.sprites.remove(self)
 
 class Gauge(pygame.sprite.Sprite):
     def __init__(self, width, height, color):
@@ -164,7 +156,7 @@ class Gauge(pygame.sprite.Sprite):
         self.rect.x, self.rect.y = x, y
 
     def display(self):
-        DISPLAY.sprites.add (self)
+        DISPLAY.screen.blit(self.image, self.rect)
 
     def set_width (self, size):
         self.image = pygame.Surface((size, self.height))
@@ -175,9 +167,6 @@ class Gauge(pygame.sprite.Sprite):
         self.image = pygame.Surface((self.width, size))
         self.image.fill(pygame.Color(self.color))
         self.height = size
-
-    def erase (self):
-        DISPLAY.sprites.remove (self)
 
 class TextSprite ():
     """ Text sprites, can be re-used through set_text """
@@ -209,24 +198,14 @@ class TextSprite ():
                 j += 16
 
     def set_text (self, text):
-        if self.is_displayed:
-            self.erase()
-            self.is_displayed = True
         if self.textsprites:
             self.textsprites = []
         self._render(text)
-        if self.is_displayed:
-            self.display()
 
     def display(self):
         self.is_displayed = True
         for sprite in self.textsprites:
-            DISPLAY.sprites.add (sprite)
-
-    def erase(self):
-        self.is_displayed = False
-        for sprite in self.textsprites:
-            DISPLAY.sprites.remove (sprite)
+            DISPLAY.screen.blit(sprite.image, sprite.rect)
 
 class Interface ():
     """Represents a scene, or a window modal, listening to events and

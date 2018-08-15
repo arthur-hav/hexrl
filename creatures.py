@@ -165,7 +165,6 @@ class Creature(SimpleSprite, CascadeElement):
                 status.status_end(self)
             self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.tile]
-            self.erase()
 
 
     def ai_play(self):
@@ -197,9 +196,6 @@ class Creature(SimpleSprite, CascadeElement):
         CascadeElement.display(self)
         SimpleSprite.display(self)
 
-    def erase(self):
-        CascadeElement.erase(self)
-        SimpleSprite.erase(self)
 
 
 

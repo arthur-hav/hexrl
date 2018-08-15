@@ -27,7 +27,6 @@ class EquipInterface(Interface, CascadeElement):
         if teamnum > len(self.father.pc_list):
             return
         self.item.equip(self.father.pc_list[teamnum])
-        self.erase()
         self.done()
 
 class MainMenuInterface(Interface, CascadeElement):
@@ -41,7 +40,6 @@ class MainMenuInterface(Interface, CascadeElement):
             ])
 
     def start(self, mouse_pos):
-        self.erase()
         wi = WorldInterface(self)
         if os.path.exists('save.json'):
             wi.load_game('save.json')
@@ -51,9 +49,8 @@ class MainMenuInterface(Interface, CascadeElement):
         wi.display()
         self.desactivate()
 
-    def on_return(self, defunct):
+    def update(self, mouse_pos):
         self.display()
-
 class StatusDisplay(CascadeElement):
     def __init__(self, worldinterface):
         self.worldinterface = worldinterface
@@ -180,7 +177,6 @@ class WorldInterface(Interface, CascadeElement):
         self.inventory_display.update(mouse_pos)
 
     def start_game(self, mobs):
-        self.erase()
         gi = GameInterface(self, mobs)
         gi.activate()
         self.desactivate()
@@ -203,7 +199,6 @@ class WorldInterface(Interface, CascadeElement):
             f.write(json.dumps(save))
 
     def quit(self, mouse_pos):
-        self.erase()
         self.done()
 
     def load_game(self, filename):

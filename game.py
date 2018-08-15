@@ -22,7 +22,6 @@ class QuitInterface(Interface, CascadeElement):
         self.display()
 
     def cancel(self, mouse_pos):
-        self.erase()
         self.done()
 
     def confirm(self, mouse_pos):
@@ -117,7 +116,6 @@ Use special abilities with numpad [1-3], confirm target with mouse click or [Ent
         self.display()
 
     def cancel(self, mouse_pos):
-        self.erase()
         self.done()
 
 class Tooltip(CascadeElement):
@@ -196,7 +194,6 @@ class InfoDisplay (CascadeElement):
         self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.status_effect_display]
 
     def update(self, creature, mouse_pos):
-        self.tooltip.erase()
         self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.status_effect_display]
         if self.health.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Health\nA creature is killed if this reaches 0.")
@@ -210,7 +207,6 @@ class InfoDisplay (CascadeElement):
         self.ability_display.update(creature, mouse_pos)
         self.status_effect_display.update(creature, mouse_pos)
         if not creature:
-            self.erase()
             return
         self.portrait.animate(os.path.join('portraits', creature.portrait))
         self.damage_stat.set_text(str(creature.damage))
@@ -227,7 +223,6 @@ class AbilityDisplay (CascadeElement):
         self.tooltip = Tooltip()
         self.text = TextSprite('Abilities', '#ffffff', basex, basey)
     def update(self, creature, mouse_pos):
-        self.erase()
         self.subsprites = [self.text]
         for i, ability in enumerate(creature.abilities):
             if creature.ability_cooldown[i]:
@@ -252,7 +247,6 @@ class StatusEffectDisplay (CascadeElement):
         self.basex = basex
         self.basey = basey
     def update(self, creature, mouse_pos):
-        self.erase()
         self.subsprites = []
         for i, status in enumerate(creature.status):
             text = '<%d>' % ceil(creature.status_cooldown[i] / 100)
@@ -307,7 +301,6 @@ class DamageLogDisplay (CascadeElement):
             self.mean_sprites[i].rect.y = self.basey + 32 * i
         self.subsprites = []
     def update(self):
-        self.erase()
         self.subsprites = []
         for i, line in enumerate(self.lines):
             if line[0]:
@@ -343,53 +336,74 @@ class NextToActDisplay (CascadeElement):
         for i in range(4):
             self.subsprites[i].animate(to_act[i].image_name)
 
+class StepHint(CascadeElement):
+    def __init__(self):
+        super().__init__()
+        self.subsprites = [TextSprite('[%d]' % (i + 4), '#00FF00', 0, 0) for i in range(6)]
+        self.must_display = [False] * 6
+        for text in self.subsprites:
+            for sprite in text.textsprites:
+                sprite.image.set_alpha(120)
+
+    def update(self, creature):
+        if not creature.is_pc:
+            self.must_display = [False] * 6
+            return
+        for i, neighbour in enumerate(creature.tile.neighbours()):
+            if not neighbour.in_boundaries():
+                self.must_display[i] = False
+                continue
+            self.subsprites[i].textsprites[0].rect.x, self.subsprites[i].textsprites[0].rect.y = neighbour.display_location()
+            self.must_display[i] = True
+
+    def display(self):
+        for sprite, disp in zip(self.subsprites, self.must_display):
+            if disp:
+                sprite.display()
 
 class Arena(CascadeElement):
-    def __init__(self, game):
-        self.game = game
+    def __init__(self):
         self.board = {}
-        self.step_hints = []
+        self.step_hints = StepHint()
         for i in range(-8, 8):
             for j in range(-8, 8):
                 tile = GameTile(i, j + (i % 2)/2)
                 if tile.in_boundaries():
                     self.board[tile] = SimpleSprite('tiles/GreyTile.png')
                     self.board[tile].rect.move_ip(*tile.display_location())
-        self.subsprites = list(self.board.values())
+        self.subsprites = list(self.board.values()) + [self.step_hints]
 
     def update(self, creature, mouse_pos):
-        for step in self.step_hints:
-            step.erase()
-        self.step_hints = []
         for sprite in self.board.values():
             sprite.animate('tiles/GreyTile.png')
 
         #Highlight active player
         self.board[creature.tile].animate('tiles/Green2.png')
-        if creature.is_pc:
-            self.keyboard_hint(creature.tile)
-
-    def keyboard_hint(self, tile):
-        for i, neighbour in enumerate(tile.neighbours()):
-            if not neighbour.in_boundaries() or neighbour in self.game.creatures:
-                continue
-            x, y = self.board[neighbour].rect.x, self.board[neighbour].rect.y
-            text = TextSprite('[%d]' % (i + 4), '#00FF00', x + 4, y + 6)
-            for surf in text.textsprites:
-                surf.image.set_alpha(120)
-            self.step_hints.append(text)
-            text.display()
-
+        self.step_hints.update(creature)
 
     def get_tile_for_mouse(self, mouse_pos):
         for tile, sprite in self.board.items():
             if sprite.rect.collidepoint(mouse_pos):
                 return tile
 
+class HoverXair(SimpleSprite):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tile = None
+
+    def display(self):
+        if not self.tile:
+            return
+        self.rect.x, self.rect.y = self.tile.display_location()
+        super().display()
+
+    def update(self, tile):
+        self.tile = tile
+
 class Game(CascadeElement):
     def __init__(self, pc_list, mob_list):
         self.turn = 0
-        self.arena = Arena(self)
+        self.arena = Arena()
         self.creatures = {}
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.hover_display = InfoDisplay(18, 90)
@@ -397,9 +411,10 @@ class Game(CascadeElement):
         self.dmg_log_display = DamageLogDisplay()
         self.bg = SimpleSprite('bg.png')
         self.to_act_display = NextToActDisplay()
-        self.hover_xair = SimpleSprite('icons/target.png')
-        self.selected_xair = SimpleSprite('icons/select.png')
-        self.subsprites = [self.bg, self.hover_display, self.log_display, self.dmg_log_display, self.arena, self.to_act_display, self.hover_xair, self.selected_xair, self.cursor]
+        self.hover_xair = HoverXair('icons/target.png')
+        self.hover_xair.rect.x, self.hover_xair.rect.y = GameTile(0,0).display_location()
+        self.selected_xair = HoverXair('icons/select.png')
+        self.subsprites = [self.bg, self.arena, self.hover_display, self.log_display, self.dmg_log_display, self.to_act_display, self.hover_xair, self.selected_xair, self.cursor]
         #Will be set by new turn, only here declaring
         self.to_act = None
         self.selected = None
@@ -414,13 +429,13 @@ class Game(CascadeElement):
         for pc, gt in zip(pcs, [(-2, 5), (-1, 5.5), (0, 5), (1, 5.5), (2, 5), ]):
             if pc.health > 0:
                 pc.set_in_game(self, GameTile(*gt), i)
-                self.subsprites.append(pc)
+                self.subsprites.insert(7, pc)
             i += 2
         i = 1
         for mobdef, gt in mobs:
             c = Creature(mobdef)
             c.set_in_game(self, GameTile(*gt), i)
-            self.subsprites.append(c)
+            self.subsprites.insert(7, c)
             i += 2
 
     def apply_ability(self, ability, creature, target):
@@ -454,24 +469,15 @@ class Game(CascadeElement):
             self.new_turn()
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10 
         tile = self.arena.get_tile_for_mouse(mouse_pos)
+        self.hover_xair.update(tile)
+        self.selected_xair.update(self.selected)
         creature = self.creatures.get(tile, self.creatures.get(self.selected, self.to_act))
         self.hover_display.update(creature, mouse_pos)
         self.dmg_log_display.update()
         for cr in self.creatures.values():
             cr.update()
         self.arena.update(self.to_act, mouse_pos)
-        if tile:
-            self.hover_xair.rect.x, self.hover_xair.rect.y = tile.display_location()
-            self.hover_xair.display()
-        else:
-            self.hover_xair.erase()
-        if self.selected:
-            self.selected_xair.rect.x, self.selected_xair.rect.y = self.selected.display_location()
-            self.selected_xair.display()
-        else:
-            self.selected_xair.erase()
-        self.cursor.erase()
-        self.cursor.display()
+        self.display()
 
     def is_over(self):
         return all((c.is_pc for c in self.creatures.values())) or all((not c.is_pc for c in self.creatures.values()))
@@ -533,7 +539,6 @@ class GameInterface (Interface):
             return
         self.game.to_act.move_or_attack(self.game.to_act.tile.neighbours()[index])
         if self.game.is_over():
-            self.game.erase()
             self.done()
 
     def pass_turn(self, _):
@@ -602,7 +607,6 @@ class GameInterface (Interface):
             self.game.apply_ability(defunct.ability, self.game.to_act, defunct.target)
         self.game.cursor.animate('icons/magnifyingglass.png')
         if self.game.is_over():
-            self.game.erase()
             self.done()
 #
     def update(self, mouse_pos):

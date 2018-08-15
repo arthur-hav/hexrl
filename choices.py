@@ -68,7 +68,6 @@ class GameOver(Choice):
         return ['Back to main menu']
     def choice_one(self):
         os.unlink('save.json')
-        self.world_interface.erase()
         self.world_interface.done()
 
 class FightChoice(Choice):

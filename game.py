@@ -164,6 +164,7 @@ class TargetInterface(Interface):
         if tile and tile in self.valid_targets:
             self.target = tile
         self.father.game.selected = self.target
+        self.father.game.display()
     def on_click(self, mouse_pos):
         self.target = self.father.game.arena.get_tile_for_mouse(mouse_pos)
         if self.target and self.target in self.valid_targets:
@@ -191,10 +192,10 @@ class InfoDisplay (CascadeElement):
         self.speed_stat = TextSprite('', '#ffffff', basex + 116, basey + 260)
         self.ability_display = AbilityDisplay(basex, basey + 288)
         self.status_effect_display = StatusEffectDisplay(basex, basey + 384)
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.status_effect_display]
+        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.ability_display, self.status_effect_display]
 
     def update(self, creature, mouse_pos):
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.status_effect_display]
+        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.ability_display, self.status_effect_display]
         if self.health.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Health\nA creature is killed if this reaches 0.")
             self.subsprites.append(self.tooltip)

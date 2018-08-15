@@ -102,7 +102,7 @@ class Invocation(Ability):
         c = Creature(self.defkey)
         c.set_in_game(creature.game, target, creature.next_action + 100)
         c.is_pc = creature.is_pc
-        c.display()
+        c.game.subsprites.insert(7, c)
         creature.game.log_display.push_text("%s raises %s !" % (creature.name, c.name))
 
 class StatusAbility(Ability):

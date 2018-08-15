@@ -51,6 +51,7 @@ class MainMenuInterface(Interface, CascadeElement):
 
     def update(self, mouse_pos):
         self.display()
+
 class StatusDisplay(CascadeElement):
     def __init__(self, worldinterface):
         self.worldinterface = worldinterface
@@ -71,7 +72,6 @@ class StatusDisplay(CascadeElement):
             pc_health_stat = TextSprite('', '#ffffff', 786, 164 + 32 * i)
             self.health_stats.append(pc_health_stat)
             self.pc_icons.append(pc_tile)
-            self.subsprites.extend([pc_tile, pc_health_stat])
 
     def update(self, mouse_pos):
         self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory
@@ -82,6 +82,7 @@ class StatusDisplay(CascadeElement):
             self.day_text.set_text("Day %d" % self.worldinterface.day)
             self.pc_icons[i].animate(pc.image_name)
             self.subsprites.append(self.pc_icons[i])
+            self.subsprites.append(self.health_stats[i])
         for i, item in enumerate(self.worldinterface.inventory):
             if item.equipped_to:
                 self.inventory[i].animate('tiles/Green2.png')

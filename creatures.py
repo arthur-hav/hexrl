@@ -165,6 +165,7 @@ class Creature(SimpleSprite, CascadeElement):
                 status.status_end(self)
             self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.tile]
+            self.game.subsprites.remove(self)
 
 
     def ai_play(self):

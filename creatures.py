@@ -1,5 +1,5 @@
 from display import SimpleSprite, CascadeElement, Gauge
-from abilities import BoltAbility, DamageAbility, AoeAbility, NovaAbility, Invocation, ShieldAbility, ABILITIES
+from abilities import ABILITIES
 import os
 import random
 import math
@@ -34,7 +34,11 @@ class Creature(SimpleSprite, CascadeElement):
         self.is_ranged = False
         for k, v in DEFS[defkey].items():
             setattr(self, k, v)
-        self.abilities = [ABILITIES[k] for k in self.abilities]
+        creature_ability_def = [k[1] for k in self.abilities]
+        self.abilities = [ABILITIES[k[0]] for k in self.abilities]
+        for c_def, ability_template in zip(creature_ability_def, self.abilities):
+            c_def.update(ability_template[1])
+        self.abilities = [template[0](**c_def) for template, c_def in zip(self.abilities, creature_ability_def)]
         self.is_pc = is_pc
         self.defkey = defkey
         self.health_gauge = SideHealthGauge(self)
@@ -178,27 +182,28 @@ class Creature(SimpleSprite, CascadeElement):
                 self.move_or_attack(tile)
                 return
         #CASTING
+        valid_targets = None
         if self.abilities:
             ability_num = random.randint(0, len(self.abilities) - 1)
-        valid_targets = None
-        if self.abilities and self.ability_cooldown[ability_num] == 0:
-            valid_targets = self.game.get_valid_targets(self, self.abilities[ability_num])
+            if self.ability_cooldown[ability_num] == 0:
+                valid_targets = self.game.get_valid_targets(self, self.abilities[ability_num])
         if valid_targets:
             target = random.choice(valid_targets)
             self.use_ability(self.abilities[ability_num], target)
             return
         #HUNTING
         if self.speed > 0 or nearest_pc.tile.dist(self.tile) < 1.25:
-            self.move_or_attack(self.step_to(nearest_pc.tile))
-            return
-        self.next_action += 50
+            tile = self.step_to(nearest_pc.tile)
+            # Only swap position with a lesser hp ally to avoid dancing
+            if tile not in self.game.creatures or self.game.creatures[tile].is_pc != self.is_pc or self.game.creatures[tile].health < self.health:
+                self.move_or_attack(tile)
+                return
+        #IDLE
+        self.next_action += 100
 
     def display(self):
         CascadeElement.display(self)
         SimpleSprite.display(self)
-
-
-
 
 DEFS = {
     'Fighter': {
@@ -208,7 +213,9 @@ DEFS = {
         'damage': 16,
         'speed': 10,
         'name': 'Fighter',
-        'abilities': ['Shield'],
+        'abilities': [
+            ('Shield', {'ability_range':1, 'cooldown': 300, 'power':16})
+        ],
     },
     'Barbarian': {
         'portrait': 'Barbarian.png',
@@ -218,7 +225,7 @@ DEFS = {
         'speed': 10,
         'is_pc': True,
         'name': 'Barbarian',
-        'abilities': ['Cleave']
+        'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200, 'need_los':True,})]
     },
     'Archer': {
         'portrait': 'Archer.png',
@@ -227,7 +234,7 @@ DEFS = {
         'damage': 12,
         'speed': 12,
         'name': 'Archer',
-        'abilities': ['Long bow'],
+        'abilities': [('Arrow', {'ability_range' : 4, 'damagefactor':1, 'need_los' : True,})],
     },
     'Wizard': {
         'portrait': 'Wizard.png',
@@ -236,7 +243,7 @@ DEFS = {
         'damage': 10,
         'speed': 8,
         'name': 'Wizard',
-        'abilities': ['Fireball', 'Lightning'],
+        'abilities': [('Fireball', {'ability_range' : 3, 'power':5, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':200,})],
     },
     'Enchantress': {
         'portrait': 'Elf.png',
@@ -245,7 +252,7 @@ DEFS = {
         'damage': 10,
         'speed': 10,
         'name': 'Enchantress',
-        'abilities': ['Root'],
+        'abilities': [('Root', {'ability_range':5, 'cooldown':0, 'duration':200})],
     },
 
 
@@ -277,8 +284,8 @@ DEFS = {
         'health': 50,
         'damage': 5,
         'speed': 7,
-        'name': 'Skeleton',
-        'abilities': ['Short bow'],
+        'name': 'Skeleton Archer',
+        'abilities': [('Arrow', {'ability_range': 3, 'damagefactor':1, 'need_los' : True,})],
     },
     'Necromancer': {
         'is_ranged': True,
@@ -289,7 +296,7 @@ DEFS = {
         'speed': 7,
         'name': 'Necromancer',
         'description': 'Can raise undead',
-        'abilities': ['Raise Undead'],
+        'abilities': [('Raise Undead', {'ability_range':2, 'cooldown':300,})],
     },
     'Demon': {
         'is_ranged': False,
@@ -300,17 +307,18 @@ DEFS = {
         'speed': 10,
         'name': 'Demon',
         'description': 'Tough opponent',
-        'abilities': ['Fireball', 'Call Imp'],
+        'abilities': [('Fireball', {'ability_range' : 3, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':300,}),
+            ('Call Imp', {'ability_range':1, 'cooldown':600,}) ],
     },
     'Imp': {
         'is_ranged': True,
         'portrait': 'Imp.png',
         'image_name': 'tiles/Imp.png',
         'health': 80,
-        'damage': 10,
+        'damage': 8,
         'speed': 10,
         'name': 'Imp',
         'description': 'Small caster demon',
-        'abilities': ['Lightning'],
+        'abilities': [('Lightning', {'ability_range' : 5, 'power':0, 'damagefactor':1, 'cooldown':200,})],
     },
 }

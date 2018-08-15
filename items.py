@@ -39,20 +39,24 @@ class StatsItem(Item):
             setattr(self.equipped_to, k, getattr(self.equipped_to, k) - v)
 
 class AbilityItem(Item):
-    def __init__(self, name, image_name, shop_price, ability):
+    def __init__(self, name, image_name, shop_price, ability, ability_def):
         super().__init__(name, image_name, shop_price)
         self.ability = ABILITIES[ability]
+        self.ability_def = self.ability[1].copy()
+        self.ability_def.update(ability_def)
     def __str__(self):
-        return 'This item gives the ability %s' % self.ability.name
+        return 'This item gives the ability %s' % self.ability_def['name']
 
     def on_equip(self, creature):
-        creature.abilities.append(self.ability)
+        creature.abilities.append(self.ability[0](**self.ability_def))
 
     def on_unequip(self):
-        self.equipped_to.abilities.remove(self.ability)
+        for ability in list(self.equipped_to.abilities):
+            if ability.name == self.ability_def['name']:
+                creature.abilities.remove(ability)
 
 ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),
-    'Lightfoot amulet': (StatsItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, {'speed':4})),
-    'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust'))
+    'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown':200} )),
+    'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration':250, 'is_instant':True,}  ))
 }

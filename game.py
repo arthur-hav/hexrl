@@ -187,23 +187,17 @@ class InfoDisplay (CascadeElement):
         self.damage = SimpleSprite('icons/sword.png')
         self.damage.rect.move_ip(basex, basey + 256)
         self.damage_stat = TextSprite('', '#ffffff', basex + 36, basey + 260)
-        self.speed = SimpleSprite('icons/quickness.png')
-        self.speed.rect.move_ip(basex + 80, basey + 256) 
-        self.speed_stat = TextSprite('', '#ffffff', basex + 116, basey + 260)
         self.ability_display = AbilityDisplay(basex, basey + 288)
         self.status_effect_display = StatusEffectDisplay(basex, basey + 384)
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.ability_display, self.status_effect_display]
+        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.description, self.ability_display, self.status_effect_display]
 
     def update(self, creature, mouse_pos):
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.speed, self.speed_stat, self.description, self.ability_display, self.status_effect_display]
+        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.description, self.ability_display, self.status_effect_display]
         if self.health.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Health\nA creature is killed if this reaches 0.")
             self.subsprites.append(self.tooltip)
         elif self.damage.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Damage\nDamage inflicted per melee attack. Also influences ability damage.")
-            self.subsprites.append(self.tooltip)
-        elif self.speed.rect.collidepoint(mouse_pos):
-            self.tooltip.set_text("Speed\nHow fast this creature moves through terrain.\nA creature with a speed of 10 takes one turn per move.")
             self.subsprites.append(self.tooltip)
         self.ability_display.update(creature, mouse_pos)
         self.status_effect_display.update(creature, mouse_pos)
@@ -212,7 +206,6 @@ class InfoDisplay (CascadeElement):
         self.portrait.animate(os.path.join('portraits', creature.portrait))
         self.damage_stat.set_text(str(creature.damage))
         self.health_stat.set_text('%s/%s' % (str(creature.health), str(creature.maxhealth)))
-        self.speed_stat.set_text(str(creature.speed))
         self.description.set_text(str(getattr(creature, 'description', '')))
         self.display()
 

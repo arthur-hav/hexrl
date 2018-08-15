@@ -12,7 +12,7 @@ class EquipInterface(Interface, CascadeElement):
         self.item = item
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.x, self.bg.rect.y = 262, 200
-        self.text = TextSprite('Equip adventurer with [1-5]\n[Esc] to cancel', '#ffffff', 274, 250)
+        self.text = TextSprite('Equip adventurer with [1-5]. [Esc] to cancel.', '#ffffff', 274, 250)
         self.stats = TextSprite(str(item), '#ffffff', 274, 220, maxlen=350)
         self.subsprites = [self.bg, self.stats, self.text]
         Interface.__init__(self, father, keys = [
@@ -88,7 +88,6 @@ class StatusDisplay(CascadeElement):
                 self.inventory[i].animate('tiles/Green2.png')
             item.rect.x, item.rect.y = self.inventory[i].rect.x, self.inventory[i].rect.y
             self.subsprites.append(item)
-        self.display()
 
     def on_click(self, mouse_pos):
         for sprite in self.worldinterface.inventory:
@@ -108,9 +107,10 @@ class WorldInterface(Interface, CascadeElement):
         self.current_question = None
         self.bg = SimpleSprite('menu.png')
         self.inventory = []
+        self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
         self.choice_text = [TextSprite('', '#ffffff', 320, 400 + 16 * i) for i in range(3)] 
-        self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text
+        self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text + [self.cursor]
         Interface.__init__(self, father, keys = [
             ('1', lambda x: self.choose(0, x)),
             ('2', lambda x: self.choose(1, x)),
@@ -176,6 +176,8 @@ class WorldInterface(Interface, CascadeElement):
 
     def update(self, mouse_pos):
         self.inventory_display.update(mouse_pos)
+        self.cursor.rect.x, self.cursor.rect.y = mouse_pos
+        self.display()
 
     def start_game(self, mobs):
         gi = GameInterface(self, mobs)

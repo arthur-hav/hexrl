@@ -74,7 +74,7 @@ class ShieldAbility(Ability):
                 and target in creature.game.creatures \
                 and creature.game.creatures[target].is_pc == creature.is_pc
     def apply_ability(self, creature, target):
-        power = self.power + round(creature.damage * self.damagefactor)
+        power = self.power #+ round(creature.damage * self.damagefactor)
         target_cr = creature.game.creatures[target]
         target_cr.shield = max(target_cr.shield, power)
         creature.game.log_display.push_text("%s gains a magical shield." % (target_cr.name))
@@ -86,7 +86,7 @@ class NovaAbility(Ability):
     def apply_ability(self, creature, target):
         damage = round(creature.damage * self.damagefactor)
         for cr in list(creature.game.creatures.values()):
-            if creature.tile.dist(cr.tile) < self.ability_range and creature.is_pc != cr.is_pc:
+            if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
                 cr.take_damage(damage)
                 creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
@@ -123,20 +123,30 @@ class StatusAbility(Ability):
         target_cr.status_cooldown.append(self.duration)
         status_effect.status_start(target_cr)
 
+class TeleportAbility(Ability):
+    def is_valid_target(self, creature, target):
+        return self.range_hint(creature, target) and target not in creature.game.creatures
+
+    def apply_ability(self, creature, target):
+        creature.game.creatures[target] = creature
+        del creature.game.creatures[creature.tile]
+        creature.tile = target
+        creature.rect.x, creature.rect.y = creature.tile.display_location()
+
 class EnnemyStatusAbility(StatusAbility):
     def is_valid_target(self, creature, target):
         return super().is_valid_target(creature, target) and creature.game.creatures[target].is_pc != creature.is_pc
 
 
 ABILITIES = {
-        'Raise Undead': Invocation(name='Raise undead', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Skeleton', ability_range=2, cooldown=300, description='Places a skeleton on an empty tile of the battlefield.'),
-        'Call Imp': Invocation(name='Call Imp', image_name='icons/skull.png', image_cd='icons/skull-cd.png',  defkey='Imp', ability_range=2, cooldown=600, description='Places an imp on an empty tile of the battlefield.'),
-        'Short bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 4, damagefactor=1, need_los = True, description = 'Ranged attack for equal amount to melee damage'), 
-        'Long bow': DamageAbility(name = 'Fire arrow', image_name = 'icons/arrow.png', ability_range = 5, damagefactor=1, need_los = True, description = 'Ranged attack for equal amount to melee damage'),
-        'Fireball': AoeAbility(name = 'Fireball', image_name = 'icons/fireball.png', image_cd='icons/fireball-cd.png', ability_range = 4, power=5, damagefactor=1, aoe=0.75, need_los = True, cooldown=400, description = 'Ranged attack inflicting splash damage on adjacent ennemies.'),
-        'Lightning': BoltAbility(name = 'Lightning', image_name = 'icons/lightning.png', image_cd='icons/lightning-cd.png', ability_range = 5, power=2, damagefactor=1, cooldown=200, description='Ranged attack passing through a line of ennemies, damaging them.'),
-        'Cleave':NovaAbility(name = 'Cleave', image_name='icons/cleave.png', ability_range=1.01, damagefactor=1.2, cooldown=200, need_los=True, description='Simultaneously attack all ennemies in melee range'),
-        'Shield':ShieldAbility(name = 'Shield', image_name='icons/shield-icon.png', image_cd='icons/shield-icon-cd.png', ability_range=1, power=8, damagefactor=0.5, cooldown=300, description='Shields an ally for a small amount of damage.'),
-        'Bloodlust': StatusAbility('Bloodlust', 'icons/bloodlust.png', image_cd='icons/bloodlust-cd.png', ability_range=0, cooldown=700, duration=250, is_instant=True, description='Greatly enhances damage for a short period. Cast is instantaneous.'),
-        'Root': EnnemyStatusAbility('Root', 'icons/root.png', image_cd='icons/root-cd.png', ability_range=5, cooldown=200, duration=300, description='Target is made unable to move for a duration, and takes damage over time.'),
+        'Raise Undead': (Invocation, {'name':'Raise undead', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Skeleton','description':'Places a skeleton on an empty tile of the battlefield.'}),
+        'Call Imp': (Invocation, {'name':'Call Imp', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Imp', 'description':'Places an imp on an empty tile of the battlefield.'}),
+        'Arrow': (DamageAbility, {'name' : 'Fire arrow', 'image_name' : 'icons/arrow.png',  'description' : 'Ranged attack for equal damage than melee'}),
+        'Fireball': (AoeAbility, {'name' : 'Fireball', 'image_name' : 'icons/fireball.png', 'image_cd':'icons/fireball-cd.png', 'description' : 'Ranged attack inflicting splash damage on adjacent ennemies.'}),
+        'Lightning': (BoltAbility, {'name' : 'Lightning', 'image_name' : 'icons/lightning.png', 'image_cd':'icons/lightning-cd.png','description':'Ranged attack passing through a line of ennemies, damaging them.'}),
+        'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png',  'description':'Simultaneously attack all ennemies in melee range'}),
+        'Shield': (ShieldAbility, {'name' : 'Shield', 'image_name':'icons/shield-icon.png', 'image_cd':'icons/shield-icon-cd.png', 'description':'Shields an ally for a small amount of damage.'}),
+        'Bloodlust': (StatusAbility, {'name':'Bloodlust', 'image_name':'icons/bloodlust.png', 'image_cd':'icons/bloodlust-cd.png', 'description':'Greatly enhances damage for a short period. Cast is instantaneous.'}),
+        'Root': (EnnemyStatusAbility, {'name':'Root', 'image_name':'icons/root.png', 'image_cd':'icons/root-cd.png', 'description':'Target is made unable to move for a duration, and takes damage over time.'}),
+        'Blink': (TeleportAbility, {'name':'Blink', 'image_name':'icons/lightning.png', 'image_cd':'icons/lightning-cd.png', 'description':'Transport yourself a short distance'}),
 }

@@ -49,11 +49,10 @@ class AbilityItem(Item):
 
     def on_equip(self, creature):
         creature.abilities.append(self.ability[0](**self.ability_def))
+        self.index = len(creature.abilities) - 1
 
     def on_unequip(self):
-        for ability in list(self.equipped_to.abilities):
-            if ability.name == self.ability_def['name']:
-                creature.abilities.remove(ability)
+        self.equipped_to.abilities.pop(self.index)
 
 ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),

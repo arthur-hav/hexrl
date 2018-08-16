@@ -32,6 +32,8 @@ class SideShieldGauge(Gauge):
 class Creature(SimpleSprite, CascadeElement):
     def __init__ (self, defkey, is_pc=False):
         self.is_ranged = False
+        self.armor = 0
+        self.magic_resist = 0
         for k, v in DEFS[defkey].items():
             setattr(self, k, v)
         creature_ability_def = [k[1] for k in self.abilities]
@@ -48,6 +50,7 @@ class Creature(SimpleSprite, CascadeElement):
         SimpleSprite.__init__(self, DEFS[defkey]['image_name']) 
         self.subsprites = [self.health_gauge, self.shield_gauge]
         self.items = []
+        self.rooted = []
 
     def set_in_game(self, game, game_tile, next_action):
         self.tile = game_tile
@@ -120,7 +123,7 @@ class Creature(SimpleSprite, CascadeElement):
             return
         if destination in self.game.creatures and self.is_pc != self.game.creatures[destination].is_pc:
             return self.attack(destination)
-        elif self.speed <= 0:
+        elif self.rooted:
             return
         elif destination in self.game.creatures:
             #Swap places
@@ -155,7 +158,11 @@ class Creature(SimpleSprite, CascadeElement):
             if self.is_pc and not ability.is_instant:
                 self.game.new_turn()
 
-    def take_damage(self, number):
+    def take_damage(self, number, dmg_type='physical'):
+        if dmg_type == 'physical' and self.armor > 0:
+            number = round(10 * number / (10 + self.armor))
+        elif dmg_type == 'magic' and self.magic_resist > 0:
+            number = round(10 * number / (10 + self.magic_resist))
         if self.shield:
             self.shield -= number
             if self.shield < 0:
@@ -178,7 +185,7 @@ class Creature(SimpleSprite, CascadeElement):
         #FLEEING
         if self.is_ranged and self.tile.dist(nearest_pc.tile) < 1.25:
             tile = self.step_away(nearest_pc.tile)
-            if tile and tile.in_boundaries() and self.speed > 0:
+            if tile and tile.in_boundaries() and not self.rooted:
                 self.move_or_attack(tile)
                 return
         #CASTING
@@ -192,7 +199,7 @@ class Creature(SimpleSprite, CascadeElement):
             self.use_ability(self.abilities[ability_num], target)
             return
         #HUNTING
-        if self.speed > 0 or nearest_pc.tile.dist(self.tile) < 1.25:
+        if not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25:
             tile = self.step_to(nearest_pc.tile)
             # Only swap position with a lesser hp ally to avoid dancing
             if tile not in self.game.creatures or self.game.creatures[tile].is_pc != self.is_pc or self.game.creatures[tile].health < self.health:
@@ -211,7 +218,6 @@ DEFS = {
         'image_name': 'tiles/Fighter.png',
         'health': 100,
         'damage': 16,
-        'speed': 10,
         'name': 'Fighter',
         'abilities': [
             ('Shield', {'ability_range':1, 'cooldown': 300, 'power':16})
@@ -222,7 +228,6 @@ DEFS = {
         'image_name': 'tiles/Barbarian.png',
         'health': 80,
         'damage': 16,
-        'speed': 10,
         'is_pc': True,
         'name': 'Barbarian',
         'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200, 'need_los':True,})]
@@ -232,7 +237,6 @@ DEFS = {
         'image_name': 'tiles/Archer.png',
         'health': 80,
         'damage': 12,
-        'speed': 12,
         'name': 'Archer',
         'abilities': [('Arrow', {'ability_range' : 4, 'damagefactor':1, 'need_los' : True,})],
     },
@@ -241,7 +245,6 @@ DEFS = {
         'image_name': 'tiles/Wizard.png',
         'health': 70,
         'damage': 10,
-        'speed': 8,
         'name': 'Wizard',
         'abilities': [('Fireball', {'ability_range' : 3, 'power':5, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':200,})],
     },
@@ -250,7 +253,6 @@ DEFS = {
         'image_name': 'tiles/Elf.png',
         'health': 70,
         'damage': 10,
-        'speed': 10,
         'name': 'Enchantress',
         'abilities': [('Root', {'ability_range':5, 'cooldown':0, 'duration':200})],
     },
@@ -262,7 +264,6 @@ DEFS = {
         'description': 'Fast.',
         'health': 50,
         'damage': 8,
-        'speed': 15,
         'name': 'Gobelin',
         'abilities': [],
     },
@@ -272,7 +273,6 @@ DEFS = {
         'description': 'Dangerous in great numbers.',
         'health': 60,
         'damage': 7,
-        'speed': 7,
         'name': 'Skeleton',
         'abilities': [],
     },
@@ -283,7 +283,6 @@ DEFS = {
         'description': 'Ranged',
         'health': 50,
         'damage': 5,
-        'speed': 7,
         'name': 'Skeleton Archer',
         'abilities': [('Arrow', {'ability_range': 3, 'damagefactor':1, 'need_los' : True,})],
     },
@@ -293,7 +292,6 @@ DEFS = {
         'image_name': 'tiles/Necromancer.png',
         'health': 70,
         'damage': 7,
-        'speed': 7,
         'name': 'Necromancer',
         'description': 'Can raise undead',
         'abilities': [('Raise Undead', {'ability_range':2, 'cooldown':300,})],
@@ -304,7 +302,6 @@ DEFS = {
         'image_name': 'tiles/Demon.png',
         'health': 200,
         'damage': 15,
-        'speed': 10,
         'name': 'Demon',
         'description': 'Tough opponent',
         'abilities': [('Fireball', {'ability_range' : 3, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':300,}),
@@ -316,7 +313,6 @@ DEFS = {
         'image_name': 'tiles/Imp.png',
         'health': 80,
         'damage': 8,
-        'speed': 10,
         'name': 'Imp',
         'description': 'Small caster demon',
         'abilities': [('Lightning', {'ability_range' : 5, 'power':0, 'damagefactor':1, 'cooldown':200,})],

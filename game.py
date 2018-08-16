@@ -185,29 +185,39 @@ class InfoDisplay (CascadeElement):
         self.health.rect.move_ip(basex, basey + 224)
         self.health_stat = TextSprite('', '#ffffff', basex + 36, basey + 228)
         self.damage = SimpleSprite('icons/sword.png')
-        self.damage.rect.move_ip(basex, basey + 256)
-        self.damage_stat = TextSprite('', '#ffffff', basex + 36, basey + 260)
-        self.ability_display = AbilityDisplay(basex, basey + 288)
+        self.damage.rect.move_ip(basex + 76, basey + 224)
+        self.damage_stat = TextSprite('', '#ffffff', basex + 112, basey + 228)
+
+        self.armor = SimpleSprite('icons/shield-icon.png')
+        self.armor.rect.move_ip(basex, basey + 256)
+        self.armor_stat = TextSprite('', '#ffffff', basex + 36, basey + 260)
+        self.mr = SimpleSprite('icons/magic-resist.png')
+        self.mr.rect.move_ip(basex + 76, basey + 256)
+        self.mr_stat = TextSprite('', '#ffffff', basex + 112, basey + 260)
+
         self.status_effect_display = StatusEffectDisplay(basex, basey + 384)
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.description, self.ability_display, self.status_effect_display]
+        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.armor, self.armor_stat, self.mr, self.mr_stat, self.description, self.status_effect_display]
 
     def update(self, creature, mouse_pos):
-        self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.description, self.ability_display, self.status_effect_display]
         if self.health.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Health\nA creature is killed if this reaches 0.")
-            self.subsprites.append(self.tooltip)
+            if self.tooltip not in self.subsprites:
+                self.subsprites.append(self.tooltip)
         elif self.damage.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Damage\nDamage inflicted per melee attack. Also influences ability damage.")
-            self.subsprites.append(self.tooltip)
-        self.ability_display.update(creature, mouse_pos)
+            if self.tooltip not in self.subsprites:
+                self.subsprites.append(self.tooltip)
+        elif self.tooltip in self.subsprites:
+            self.subsprites.remove(self.tooltip)
         self.status_effect_display.update(creature, mouse_pos)
         if not creature:
             return
         self.portrait.animate(os.path.join('portraits', creature.portrait))
         self.damage_stat.set_text(str(creature.damage))
-        self.health_stat.set_text('%s/%s' % (str(creature.health), str(creature.maxhealth)))
+        self.health_stat.set_text(str(creature.health))
         self.description.set_text(str(getattr(creature, 'description', '')))
-        self.display()
+        self.mr_stat.set_text(str(creature.magic_resist))
+        self.armor_stat.set_text(str(creature.armor))
 
 class AbilityDisplay (CascadeElement):
     def __init__ (self, basex, basey):
@@ -223,33 +233,37 @@ class AbilityDisplay (CascadeElement):
                 text = '<%d>' % ceil(creature.ability_cooldown[i] / 100)
                 image = ability.image_cd
             else:
-                text = '[%d]' % (i + 1)
+                text = ability.name
                 image = ability.image_name
+            key_hint = TextSprite("[%d]" % (i + 1), '#ffffff', self.basex, self.basey + 24 + 32 * i)
             sprite = SimpleSprite(image)
-            sprite.rect.x, sprite.rect.y = (self.basex + 80 * (i % 2), self.basey + 32 * (i // 2) + 20)
+            sprite.rect.x, sprite.rect.y = (self.basex + 32, self.basey + 32 * i + 20)
             if sprite.rect.collidepoint(mouse_pos):
                 self.tooltip.set_text("%s\n%s" % (ability.name, ability.description))
                 self.subsprites.append(self.tooltip)
+            text_sprite = TextSprite(text, '#ffffff', self.basex + 70, self.basey + 24 + 32 * i)
             self.subsprites.append(sprite)
-            text_sprite = TextSprite(text, '#ffffff', self.basex + 80 * (i % 2) + 38, self.basey + 24 + 32 * (i // 2))
+            self.subsprites.append(key_hint)
             self.subsprites.append(text_sprite)
-        self.display()
 
 class StatusEffectDisplay (CascadeElement):
     def __init__ (self, basex, basey):
         super().__init__()
         self.basex = basex
         self.basey = basey
+        self.text = TextSprite('Status effects', '#ffffff', self.basex, self.basey)
     def update(self, creature, mouse_pos):
-        self.subsprites = []
+        if not creature.status:
+            self.subsprites = []
+            return
+        self.subsprites = [self.text]
         for i, status in enumerate(creature.status):
-            text = '<%d>' % ceil(creature.status_cooldown[i] / 100)
+            text = '%s <%d>' % (status.name, ceil(creature.status_cooldown[i] / 100))
             sprite = SimpleSprite(status.image_name)
-            sprite.rect.x, sprite.rect.y = (self.basex + 80 * (i % 2), self.basey + 32 * (i // 2))
+            sprite.rect.x, sprite.rect.y = (self.basex, self.basey + 20 + 32 * i)
             self.subsprites.append(sprite)
-            text_sprite = TextSprite(text, '#ffffff', self.basex + 80 * (i % 2) + 38, self.basey + 4 + 32 * (i // 2))
+            text_sprite = TextSprite(text, '#ffffff', self.basex + 38, self.basey + 24 + 32 * i)
             self.subsprites.append(text_sprite)
-        self.display()
 
 class LogDisplay (CascadeElement):
     def __init__ (self):
@@ -269,10 +283,9 @@ class LogDisplay (CascadeElement):
 
 class DamageLogDisplay (CascadeElement):
     def __init__ (self):
-        self.lines = [(None, None, 0)] * 6
-        self.number_sprites = [ TextSprite('', '#ffffff', 848, 138 + 32 * i) for i in range(6) ]
+        self.lines = [(None, None, 0)] * 5 
+        self.number_sprites = [ TextSprite('', '#ffffff', 848, 138 + 32 * i) for i in range(5) ]
         self.author_sprites = [
-            SimpleSprite('tiles/Skeleton.png'),
             SimpleSprite('tiles/Skeleton.png'),
             SimpleSprite('tiles/Skeleton.png'),
             SimpleSprite('tiles/Skeleton.png'),
@@ -285,10 +298,9 @@ class DamageLogDisplay (CascadeElement):
             SimpleSprite('icons/sword.png'),
             SimpleSprite('icons/sword.png'),
             SimpleSprite('icons/sword.png'),
-            SimpleSprite('icons/sword.png'),
         ]
         self.basex, self.basey = 780, 132 
-        for i in range(6):
+        for i in range(5):
             self.author_sprites[i].rect.x = self.basex
             self.author_sprites[i].rect.y = self.basey + 32 * i
             self.mean_sprites[i].rect.x = self.basex + 32 
@@ -401,6 +413,7 @@ class Game(CascadeElement):
         self.creatures = {}
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.hover_display = InfoDisplay(18, 90)
+        self.ability_display = AbilityDisplay(780, 320)
         self.log_display = LogDisplay()
         self.dmg_log_display = DamageLogDisplay()
         self.bg = SimpleSprite('bg.png')
@@ -408,7 +421,7 @@ class Game(CascadeElement):
         self.hover_xair = HoverXair('icons/target.png')
         self.hover_xair.rect.x, self.hover_xair.rect.y = GameTile(0,0).display_location()
         self.selected_xair = HoverXair('icons/select.png')
-        self.subsprites = [self.bg, self.arena, self.hover_display, self.log_display, self.dmg_log_display, self.to_act_display, self.hover_xair, self.selected_xair, self.cursor]
+        self.subsprites = [self.bg, self.arena, self.log_display, self.dmg_log_display, self.to_act_display, self.hover_xair, self.selected_xair, self.ability_display, self.cursor]
         #Will be set by new turn, only here declaring
         self.to_act = None
         self.selected = None
@@ -423,13 +436,13 @@ class Game(CascadeElement):
         for pc, gt in zip(pcs, [(-2, 5), (-1, 5.5), (0, 5), (1, 5.5), (2, 5), ]):
             if pc.health > 0:
                 pc.set_in_game(self, GameTile(*gt), i)
-                self.subsprites.insert(7, pc)
+                self.subsprites.insert(2, pc)
             i += 2
         i = 1
         for mobdef, gt in mobs:
             c = Creature(mobdef)
             c.set_in_game(self, GameTile(*gt), i)
-            self.subsprites.insert(7, c)
+            self.subsprites.insert(2, c)
             i += 2
 
     def apply_ability(self, ability, creature, target):
@@ -461,12 +474,18 @@ class Game(CascadeElement):
             self.to_act_display.update(self)
         elif self.game_frame > 10:
             self.new_turn()
+        self.ability_display.update(self.to_act, mouse_pos)
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10 
         tile = self.arena.get_tile_for_mouse(mouse_pos)
         self.hover_xair.update(tile)
         self.selected_xair.update(self.selected)
-        creature = self.creatures.get(tile, self.creatures.get(self.selected, self.to_act))
-        self.hover_display.update(creature, mouse_pos)
+        creature = self.creatures.get(tile, self.creatures.get(self.selected, None))
+        if creature:
+            self.hover_display.update(creature, mouse_pos)
+            if self.hover_display not in self.subsprites:
+                self.subsprites.insert(7, self.hover_display)
+        elif self.hover_display in self.subsprites:
+            self.subsprites.remove(self.hover_display)
         self.dmg_log_display.update()
         for cr in self.creatures.values():
             cr.update()

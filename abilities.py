@@ -37,7 +37,7 @@ class BoltAbility(Ability):
                 break
             target_cr = creature.game.creatures.get(tile, None)
             if target_cr and target_cr.is_pc != creature.is_pc:
-                target_cr.take_damage(damage)
+                target_cr.take_damage(damage, 'magic')
                 target_cr.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
     def splash_hint(self, creature, selected, target):
@@ -52,7 +52,7 @@ class DamageAbility(Ability):
     def apply_ability(self, creature, target):
         target_cr = creature.game.creatures[target]
         damage = self.power + round(creature.damage * self.damagefactor)
-        target_cr.take_damage(damage)
+        target_cr.take_damage(damage, self.damage_type)
         creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
 class AoeAbility(DamageAbility):
@@ -87,7 +87,7 @@ class NovaAbility(Ability):
         damage = round(creature.damage * self.damagefactor)
         for cr in list(creature.game.creatures.values()):
             if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
-                cr.take_damage(damage)
+                cr.take_damage(damage, self.damage_type)
                 creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
     def splash_hint(self, creature, selected, target):
@@ -141,12 +141,12 @@ class EnnemyStatusAbility(StatusAbility):
 ABILITIES = {
         'Raise Undead': (Invocation, {'name':'Raise undead', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Skeleton','description':'Places a skeleton on an empty tile of the battlefield.'}),
         'Call Imp': (Invocation, {'name':'Call Imp', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Imp', 'description':'Places an imp on an empty tile of the battlefield.'}),
-        'Arrow': (DamageAbility, {'name' : 'Fire arrow', 'image_name' : 'icons/arrow.png',  'description' : 'Ranged attack for equal damage than melee'}),
-        'Fireball': (AoeAbility, {'name' : 'Fireball', 'image_name' : 'icons/fireball.png', 'image_cd':'icons/fireball-cd.png', 'description' : 'Ranged attack inflicting splash damage on adjacent ennemies.'}),
-        'Lightning': (BoltAbility, {'name' : 'Lightning', 'image_name' : 'icons/lightning.png', 'image_cd':'icons/lightning-cd.png','description':'Ranged attack passing through a line of ennemies, damaging them.'}),
-        'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png',  'description':'Simultaneously attack all ennemies in melee range'}),
+        'Arrow': (DamageAbility, {'name' : 'Fire arrow', 'image_name' : 'icons/arrow.png',  'description' : 'Ranged attack for equal damage than melee', 'damage_type':'physical'}),
+        'Fireball': (AoeAbility, {'name' : 'Fireball', 'image_name' : 'icons/fireball.png', 'image_cd':'icons/fireball-cd.png', 'description' : 'Ranged attack inflicting splash damage on adjacent ennemies.', 'damage_type':'magic'}),
+        'Lightning': (BoltAbility, {'name' : 'Lightning', 'image_name' : 'icons/lightning.png', 'image_cd':'icons/lightning-cd.png','description':'Ranged attack passing through a line of ennemies, damaging them.', 'damage_type':'magic'}),
+        'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png',  'description':'Simultaneously attack all ennemies in melee range', 'damage_type':'physical'}),
         'Shield': (ShieldAbility, {'name' : 'Shield', 'image_name':'icons/shield-icon.png', 'image_cd':'icons/shield-icon-cd.png', 'description':'Shields an ally for a small amount of damage.'}),
         'Bloodlust': (StatusAbility, {'name':'Bloodlust', 'image_name':'icons/bloodlust.png', 'image_cd':'icons/bloodlust-cd.png', 'description':'Greatly enhances damage for a short period. Cast is instantaneous.'}),
         'Root': (EnnemyStatusAbility, {'name':'Root', 'image_name':'icons/root.png', 'image_cd':'icons/root-cd.png', 'description':'Target is made unable to move for a duration, and takes damage over time.'}),
-        'Blink': (TeleportAbility, {'name':'Blink', 'image_name':'icons/lightning.png', 'image_cd':'icons/lightning-cd.png', 'description':'Transport yourself a short distance'}),
+        'Blink': (TeleportAbility, {'name':'Blink', 'image_name':'icons/blink.png', 'image_cd':'icons/blink-cd.png', 'description':'Transport yourself a short distance'}),
 }

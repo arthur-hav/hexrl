@@ -195,7 +195,7 @@ class InfoDisplay (CascadeElement):
         self.mr.rect.move_ip(basex + 76, basey + 256)
         self.mr_stat = TextSprite('', '#ffffff', basex + 112, basey + 260)
 
-        self.status_effect_display = StatusEffectDisplay(basex, basey + 384)
+        self.status_effect_display = StatusEffectDisplay(basex, basey + 300)
         self.subsprites = [self.portrait, self.health, self.health_stat, self.damage, self.damage_stat, self.armor, self.armor_stat, self.mr, self.mr_stat, self.description, self.status_effect_display]
 
     def update(self, creature, mouse_pos):
@@ -253,16 +253,24 @@ class StatusEffectDisplay (CascadeElement):
         self.basey = basey
         self.text = TextSprite('Status effects', '#ffffff', self.basex, self.basey)
     def update(self, creature, mouse_pos):
-        if not creature.status:
+        if not creature.status and not creature.passives:
             self.subsprites = []
             return
         self.subsprites = [self.text]
+        i = 0
         for i, status in enumerate(creature.status):
             text = '%s <%d>' % (status.name, ceil(creature.status_cooldown[i] / 100))
             sprite = SimpleSprite(status.image_name)
             sprite.rect.x, sprite.rect.y = (self.basex, self.basey + 20 + 32 * i)
             self.subsprites.append(sprite)
             text_sprite = TextSprite(text, '#ffffff', self.basex + 38, self.basey + 24 + 32 * i)
+            self.subsprites.append(text_sprite)
+        for j, passive in enumerate(creature.passives):
+            text = passive.get_short_desc()
+            sprite = SimpleSprite(passive.image_name)
+            sprite.rect.x, sprite.rect.y = (self.basex, self.basey + 20 + 32 * (i + j))
+            self.subsprites.append(sprite)
+            text_sprite = TextSprite(text, '#ffffff', self.basex + 38, self.basey + 24 + 32 * (i+ j))
             self.subsprites.append(text_sprite)
 
 class LogDisplay (CascadeElement):

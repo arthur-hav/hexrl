@@ -109,6 +109,7 @@ class TollChoice(FightChoice):
 
     def _init(self):
         self.mobs = [ ('Gobelin', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ]
+        self.mobs.append(('Troll', (0, -6)))
         self.toll = self.rolls[0] // 50
 
     def get_text(self):

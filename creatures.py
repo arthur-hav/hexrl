@@ -1,5 +1,6 @@
 from display import SimpleSprite, CascadeElement, Gauge
 from abilities import ABILITIES
+from passives import PASSIVES
 import os
 import random
 import math
@@ -34,8 +35,17 @@ class Creature(SimpleSprite, CascadeElement):
         self.is_ranged = False
         self.armor = 0
         self.magic_resist = 0
+        self.passives = []
         for k, v in DEFS[defkey].items():
             setattr(self, k, v)
+        creature_passive_def = [k[1] for k in self.passives]
+        self.passives = [PASSIVES[k[0]] for k in self.passives]
+        for c_def, passive_template in zip(creature_passive_def, self.passives):
+            c_def.update(passive_template[1])
+        self.passives = [template[0](**c_def) for template, c_def in zip(self.passives, creature_passive_def)]
+        for passive in self.passives:
+            passive.apply_to(self)
+
         creature_ability_def = [k[1] for k in self.abilities]
         self.abilities = [ABILITIES[k[0]] for k in self.abilities]
         for c_def, ability_template in zip(creature_ability_def, self.abilities):
@@ -218,6 +228,8 @@ DEFS = {
         'image_name': 'tiles/Fighter.png',
         'health': 100,
         'damage': 16,
+        'armor':2,
+        'magic_resist': 1,
         'name': 'Fighter',
         'abilities': [
             ('Shield', {'ability_range':1, 'cooldown': 300, 'power':16})
@@ -228,7 +240,8 @@ DEFS = {
         'image_name': 'tiles/Barbarian.png',
         'health': 80,
         'damage': 16,
-        'is_pc': True,
+        'armor':1,
+        'magic_resist': 3,
         'name': 'Barbarian',
         'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200, 'need_los':True,})]
     },
@@ -261,11 +274,20 @@ DEFS = {
     'Gobelin': {
         'portrait': 'Gobelin.png',
         'image_name': 'tiles/Gobelin.png',
-        'description': 'Fast.',
         'health': 50,
         'damage': 8,
         'name': 'Gobelin',
         'abilities': [],
+    },
+    'Troll': {
+        'portrait': 'Gobelin.png',
+        'image_name': 'tiles/Troll.png',
+        'health': 70,
+        'armor':3,
+        'damage': 12,
+        'name': 'Troll',
+        'abilities': [],
+        'passives':[('Regeneration', {'rate': 6})]
     },
     'Skeleton': {
         'portrait': 'Skeleton.png',

@@ -22,6 +22,9 @@ class Bloodlust(Status):
     def status_end(self, creature):
         creature.damage -= 8
 
+    def get_description(self):
+        return "Gains %d damage." % creature.damage
+
 class Root(Status):
     def status_start(self, creature):
         self.root_time = 0
@@ -35,6 +38,9 @@ class Root(Status):
         if self.root_time >= 100:
             creature.take_damage(4, 'true')
             self.root_time -= 100 
+
+    def get_description(self):
+        return "Imobilized for %d turns. Gets small magical damage over time." % self.duration
 
 
 STATUSES = {

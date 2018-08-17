@@ -21,7 +21,19 @@ class RegenerationPassive(Passive):
     def get_description(self):
         return 'Regenerates %d health per turn' % self.rate
 
+class ShieldPassive(Passive):
+    def apply_to(self, creature):
+        def act():
+            creature.next_action += 100
+            creature.shield = max(creature.shield, self.shield)
+        creature.act = act
+    def get_short_desc(self):
+        return 'Shield %d' % self.shield
+    def get_description(self):
+        return 'Every turn, gains a shield preventing %d damage' % self.shield
+
 
 PASSIVES = {
-        'Regeneration': (RegenerationPassive, {'image_name':'icons/heart.png'}),
+        'Regeneration': (RegenerationPassive, {'name': 'Regeneration', 'image_name':'icons/heart.png'}),
+        'Shield': (ShieldPassive, {'name': 'Shield', 'image_name':'icons/shield-icon.png'}),
 }

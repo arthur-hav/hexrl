@@ -12,6 +12,7 @@ class Ability(SimpleSprite):
         self.ability_range = 0
         self.aoe = 0
         self.power = 0
+        self.health_cost = 0
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -50,6 +51,9 @@ class DamageAbility(Ability):
                 and creature.game.creatures[target].is_pc != creature.is_pc
 
     def apply_ability(self, creature, target):
+        creature.health -= self.health_cost
+        if creature.health <= 0:
+            creature.health = 1
         target_cr = creature.game.creatures[target]
         damage = self.power + round(creature.damage * self.damagefactor)
         target_cr.take_damage(damage, self.damage_type)
@@ -142,6 +146,7 @@ ABILITIES = {
         'Raise Undead': (Invocation, {'name':'Raise undead', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Skeleton','description':'Places a skeleton on an empty tile of the battlefield.'}),
         'Call Imp': (Invocation, {'name':'Call Imp', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Imp', 'description':'Places an imp on an empty tile of the battlefield.'}),
         'Arrow': (DamageAbility, {'name' : 'Fire arrow', 'image_name' : 'icons/arrow.png',  'description' : 'Ranged attack for equal damage than melee', 'damage_type':'physical'}),
+        'Smite': (DamageAbility, {'name' : 'Smite', 'image_name' : 'icons/lightning.png',  'description' : 'Inflicts true damage in exchange for health', 'damage_type':'true'}),
         'Fireball': (AoeAbility, {'name' : 'Fireball', 'image_name' : 'icons/fireball.png', 'image_cd':'icons/fireball-cd.png', 'description' : 'Ranged attack inflicting splash damage on adjacent ennemies.', 'damage_type':'magic'}),
         'Lightning': (BoltAbility, {'name' : 'Lightning', 'image_name' : 'icons/lightning.png', 'image_cd':'icons/lightning-cd.png','description':'Ranged attack passing through a line of ennemies, damaging them.', 'damage_type':'magic'}),
         'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png',  'description':'Simultaneously attack all ennemies in melee range', 'damage_type':'physical'}),

@@ -19,13 +19,6 @@ if not pygame.mixer:
 class Display():
     def __init__(self):
         #Initialize Everything
-        pygame.init()
-        self.screen = pygame.display.set_mode((960, 600)) #, pygame.FULLSCREEN|pygame.HWSURFACE)
-        pygame.mouse.set_visible(False)
-        pygame.display.set_caption('HexRL')
-        #pygame.mouse.set_visible(0)
-        #Display The Background
-        pygame.display.flip()
         self.key_handlers = defaultdict(list)
         self.mouse_handlers = []
         self.update_handlers = []
@@ -47,6 +40,14 @@ class Display():
     def unsubscribe_update(self, eventhandler):
         self.update_handlers.remove(eventhandler)
 
+    def setup(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((960, 600)) #, pygame.FULLSCREEN|pygame.HWSURFACE)
+        pygame.mouse.set_visible(False)
+        pygame.display.set_caption('HexRL')
+        #pygame.mouse.set_visible(0)
+        #Display The Background
+        pygame.display.flip()
     def main(self):
         while True:
             pygame.display.flip()

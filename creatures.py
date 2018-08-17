@@ -25,7 +25,7 @@ class SideShieldGauge(Gauge):
         self.displayed = False
         super().__init__(4, 32, '#BBCCFF')
     def update(self):
-        self.height = math.ceil((16 * self.creature.shield) // self.creature.maxhealth) * 2
+        self.height = math.ceil((16 * self.creature.shield) / self.creature.maxhealth) * 2
         self.rect.x, self.rect.y = self.creature.tile.display_location()
         self.rect.y += 32 - self.height
         self.set_height(self.height)
@@ -147,26 +147,23 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = destination
         self.rect.x, self.rect.y = self.tile.display_location()
         self.game.creatures[destination] = self
+        self.act()
+
+    def act(self):
         self.next_action += 100
-        if self.is_pc:
-            self.game.new_turn()
 
     def attack(self, destination):
         creature = self.game.creatures[destination]
         creature.take_damage(self.damage)
         self.game.dmg_log_display.push_line(self.image_name, 'icons/sword.png', self.damage)
-        self.next_action += 100
-        if self.is_pc:
-            self.game.new_turn()
+        self.act()
 
     def use_ability(self, ability, target):
         ability.apply_ability(self, target)
         if ability.cooldown:
             self.ability_cooldown[ self.abilities.index(ability) ] = ability.cooldown
         if not ability.is_instant:
-            self.next_action += 100
-            if self.is_pc and not ability.is_instant:
-                self.game.new_turn()
+            self.act()
 
     def take_damage(self, number, dmg_type='physical'):
         if dmg_type == 'physical' and self.armor > 0:
@@ -227,23 +224,26 @@ DEFS = {
         'portrait': 'Fighter.png',
         'image_name': 'tiles/Fighter.png',
         'health': 100,
-        'damage': 16,
+        'damage': 14,
         'armor':2,
         'magic_resist': 1,
         'name': 'Fighter',
         'abilities': [
-            ('Shield', {'ability_range':1, 'cooldown': 300, 'power':16})
+            ('Smite', {'ability_range':2, 'power':4, 'damagefactor':1, 'health_cost':2, 'cooldown':300, 'need_los':False,}),
         ],
+        'passives': [
+            ('Shield', {'shield':5}),
+        ]
     },
     'Barbarian': {
         'portrait': 'Barbarian.png',
         'image_name': 'tiles/Barbarian.png',
-        'health': 80,
+        'health': 90,
         'damage': 16,
         'armor':1,
         'magic_resist': 3,
         'name': 'Barbarian',
-        'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200, 'need_los':True,})]
+        'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200})]
     },
     'Archer': {
         'portrait': 'Archer.png',

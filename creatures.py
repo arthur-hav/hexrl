@@ -181,6 +181,9 @@ class Creature(SimpleSprite, CascadeElement):
         if self.health <= 0:
             for status in self.status:
                 status.status_end(self)
+            self.status = []
+            self.status_cooldown = []
+            self.passives = []
             self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.tile]
             self.game.subsprites.remove(self)

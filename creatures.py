@@ -73,6 +73,10 @@ class Creature(SimpleSprite, CascadeElement):
         self.status_cooldown = []
         self.status = []
 
+    def end_game(self):
+        self.game = None
+        self.tile = None
+
     def update(self):
         if self.frames:
             self.animate(self.frames.pop(0))
@@ -147,23 +151,26 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = destination
         self.rect.x, self.rect.y = self.tile.display_location()
         self.game.creatures[destination] = self
-        self.act()
+        self.end_act()
 
-    def act(self):
+    def idle(self):
+        self.end_act()
+
+    def end_act(self):
         self.next_action += 100
 
     def attack(self, destination):
         creature = self.game.creatures[destination]
         creature.take_damage(self.damage)
         self.game.dmg_log_display.push_line(self.image_name, 'icons/sword.png', self.damage)
-        self.act()
+        self.end_act()
 
     def use_ability(self, ability, target):
         ability.apply_ability(self, target)
         if ability.cooldown:
             self.ability_cooldown[ self.abilities.index(ability) ] = ability.cooldown
         if not ability.is_instant:
-            self.act()
+            self.end_act()
 
     def take_damage(self, number, dmg_type='physical'):
         if dmg_type == 'physical' and self.armor > 0:
@@ -216,7 +223,7 @@ class Creature(SimpleSprite, CascadeElement):
                 self.move_or_attack(tile)
                 return
         #IDLE
-        self.next_action += 100
+        self.idle()
 
     def display(self):
         CascadeElement.display(self)
@@ -244,8 +251,9 @@ DEFS = {
         'health': 90,
         'damage': 16,
         'armor':1,
-        'magic_resist': 3,
+        'magic_resist': 1,
         'name': 'Barbarian',
+        'passives':[('Regeneration', {'rate': 2, 'maxhealth':25})],
         'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200})]
     },
     'Archer': {
@@ -262,6 +270,7 @@ DEFS = {
         'health': 70,
         'damage': 10,
         'name': 'Wizard',
+        'passives':[('Fastcast', {'cdr':3})],
         'abilities': [('Fireball', {'ability_range' : 3, 'power':5, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':200,})],
     },
     'Enchantress': {
@@ -290,7 +299,7 @@ DEFS = {
         'damage': 12,
         'name': 'Troll',
         'abilities': [],
-        'passives':[('Regeneration', {'rate': 6})]
+        'passives':[('Regeneration', {'rate': 6, 'maxhealth':None})]
     },
     'Skeleton': {
         'portrait': 'Skeleton.png',

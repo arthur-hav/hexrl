@@ -32,19 +32,28 @@ class EquipInterface(Interface, CascadeElement):
 class MainMenuInterface(Interface, CascadeElement):
     def __init__(self):
         self.bg = SimpleSprite('menu.png')
-        self.hello = TextSprite('Press <Enter> to start the game...', '#ffffff', 320, 280)
-        self.subsprites = [self.bg, self.hello]
+        self.hello = TextSprite('Choose a save slot with keys 1-3', '#ffffff', 320, 280)
+        self.slots = []
+        for i in range(3):
+            try:
+                slotname = 'Day %d' % json.load(open('save%d.json' % (i + 1)))['day']
+            except FileNotFoundError:
+                slotname = 'Empty'
+            self.slots.append(TextSprite('[%d] Slot - %s' % (i + 1, slotname), '#ffffff', 320, 300 + 20 * i))
+        self.subsprites = [self.bg, self.hello] + self.slots
         Interface.__init__(self, None, keys = [
             (K_ESCAPE, lambda x: self.done()),
-            (K_RETURN, self.start),
+            ('1', lambda x: self.start(1)),
+            ('2', lambda x: self.start(2)),
+            ('3', lambda x: self.start(3)),
             ])
 
-    def start(self, mouse_pos):
+    def start(self, slot):
         wi = WorldInterface(self)
-        if os.path.exists('save.json'):
-            wi.load_game('save.json')
-        else:
-            wi.new_game()
+        try:
+            wi.load_game(slot)
+        except FileNotFoundError as e:
+            wi.new_game(slot)
         wi.activate()
         wi.display()
         self.desactivate()
@@ -126,7 +135,8 @@ class WorldInterface(Interface, CascadeElement):
     def on_click(self, mouse_pos):
         self.inventory_display.on_click(mouse_pos)
 
-    def new_game(self):
+    def new_game(self, slot):
+        self.slot = slot
         self.party_gold = 0
         self.day = 1
         self.this_day_question = 0
@@ -198,14 +208,15 @@ class WorldInterface(Interface, CascadeElement):
                 'this_day_question': self.this_day_question,
                 'inventory_dump': inventory_dump
                 }
-        with open('save.json', 'w') as f:
+        with open('save%d.json' % self.slot, 'w') as f:
             f.write(json.dumps(save))
 
     def quit(self, mouse_pos):
         self.done()
 
-    def load_game(self, filename):
-        with open(filename) as f:
+    def load_game(self, slot):
+        self.slot = slot
+        with open('save%d.json' % slot) as f:
             d = json.loads(f.read())
         self.party_gold = d['gold']
         self.day = d['day']

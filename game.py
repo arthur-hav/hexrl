@@ -688,7 +688,7 @@ class GameInterface (Interface):
         self.game.update(mouse_pos)
 
     def done(self):
-        for creature in self.creature.values():
+        for creature in self.game.creatures.values():
             creature.end_game()
         super().done()
     

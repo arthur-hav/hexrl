@@ -128,9 +128,9 @@ class WorldInterface(Interface, CascadeElement):
             ])
 
     def on_return(self, defunct):
-        self.display()
         if isinstance(defunct, GameInterface):
             self.pick()
+        self.pc_list = [pc for pc in self.pc_list if pc.health > 0]
 
     def on_click(self, mouse_pos):
         self.inventory_display.on_click(mouse_pos)

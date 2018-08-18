@@ -41,7 +41,7 @@ class Choice():
 
 
 class RestChoice(Choice):
-    heal_percent = 30
+    heal_percent = 25
 
     def get_text(self):
         s = 'You find a nice place to rest and settle a camp for the night.'
@@ -77,16 +77,65 @@ class FightChoice(Choice):
     def _init(self):
         self.mobs = [ ('Skeleton', (i, -4 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1) ]
         self.mobs += [ ('SkeletonArcher', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ] 
-        if self.rolls[0] < 4:
-            self.mobs.append(('Necromancer', (0, -6)))
 
     def get_text(self):
-        return 'You find a pack of undead creatures. They are willing to make you join their army.'
+        return 'You find a pack of undead creatures. They want to make you join their army.'
 
     def get_choices(self):
         return ['Fight']
     def choice_one(self):
         return self.world_interface.start_game(self.mobs)
+
+class OldManChoice(Choice):
+    def roll(self):
+        self.rolls = [random.randint(0,1)]
+
+    def get_text(self):
+        return 'You see an old man far in the mist. Do you want to go greet him ?'
+
+    def get_choices(self):
+        return ['Yes', 'No']
+    def choice_one(self):
+        if self.rolls[0]:
+            self.world_interface.current_question = get_question('necromancer')(self.world_interface)
+            self.world_interface.display_choices()
+        else:
+            self.world_interface.current_question = get_question('goodoldman')(self.world_interface)
+            self.world_interface.display_choices()
+
+    def choice_two(self):
+        self.world_interface.next_question()
+
+class NecromancerChoice(Choice):
+    def roll(self):
+        self.rolls = [random.randint(2,7), random.randint(0,5)]
+    def _init(self):
+        self.mobs = [ ('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ]
+        self.mobs.append(('Necromancer', (0, -6)))
+
+    def get_text(self):
+        return 'As you come further, other shadows rises from your sides. He is certainly no ordinary old man...'
+
+    def get_choices(self):
+        return ['Fight']
+    def choice_one(self):
+        return self.world_interface.start_game(self.mobs)
+
+class GoodOldManChoice(Choice):
+    def roll(self):
+        self.rolls = [random.choice( list(items.ITEMS.keys()))]
+    def _init (self):
+        self.gold = get_question(self.world_interface.previous_question).REWARD * self.rolls[0] // 1000
+
+    def get_text(self):
+        return 'As you greet him, the old man tells you he is lost and leaves in a nearby village. You accompany him to safety. He thanks you warmly and offer you an item to show you his gratitude.'
+
+    def get_choices(self):
+        return ['OK']
+
+    def choice_one(self):
+        self.world_interface.inventory.append(self.rolls[0])
+        self.world_interface.next_question()
 
 class DemonChoice(Choice):
     REWARD = 30
@@ -195,6 +244,26 @@ class LootChoice(Choice):
         self.world_interface.party_gold += self.gold
         self.world_interface.next_question()
 
+class NothingChoice(Choice):
+    TEXTS = [
+            "The sun softly warms your skin as you keep walking. You pass beneath a beautiful tree. You feel at ease.",
+            "As the mist thickens you mark a pause on your journey to avoid dangerous ambushes, but nothing bad happens.",
+            "During your walk, adventurers argue about possible meanings of life.",
+    ]
+    def roll(self):
+        self.rolls = [random.choice(NothingChoice.TEXTS)]
+    def _init (self):
+        pass
+
+    def get_text(self):
+        return self.rolls[0]
+
+    def get_choices(self):
+        return ['OK']
+
+    def choice_one(self):
+        self.world_interface.next_question()
+
 class StartChoice(Choice):
     def roll(self):
         self.rolls = [exp_reward()]
@@ -213,10 +282,14 @@ NORMAL_CHOICES = {
     'gobelin_squad': TollChoice,
     'undead': FightChoice,
     'demon': DemonChoice,
+    'nothing':NothingChoice,
+    'oldman': OldManChoice,
     'shop': ShopChoice
 }
 SPECIAL_CHOICES = {
     'rest':RestChoice,
+    'necromancer': NecromancerChoice,
+    'goodoldman': GoodOldManChoice,
     'start':StartChoice,
     'gameover':GameOver,
     'loot':LootChoice,

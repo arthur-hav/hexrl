@@ -102,7 +102,7 @@ class DemonChoice(Choice):
         return self.world_interface.start_game(self.mobs)
 
 
-class TollChoice(FightChoice):
+class TollChoice(Choice):
     REWARD = 20
     def roll(self):
         self.rolls = [exp_reward(), random.randint(3,5)]
@@ -120,6 +120,9 @@ class TollChoice(FightChoice):
             return ['Fight']
         return ['Fight', 'Pay the toll']
 
+    def choice_one(self):
+        return self.world_interface.start_game(self.mobs)
+
     def choice_two(self):
         self.world_interface.pay(self.toll)
         self.world_interface.current_question_key = ''
@@ -127,32 +130,53 @@ class TollChoice(FightChoice):
 
 class ShopChoice(Choice):
     def roll(self):
-        self.rolls = [ random.choice( list(items.ITEMS.keys()) ), exp_discount() ]
-    def _init(self):
-        item_class = items.ITEMS[self.rolls[0]][0]
-        item_args = items.ITEMS[self.rolls[0]][1]
-        self.item = item_class(*item_args) 
-        self.shop_price = self.rolls[1] * self.item.shop_price // 1000
+        self.rolls = [ random.choice( list(items.ITEMS.keys()) ) for _ in range(3)] + [exp_discount() for _ in range(3)]
+    def _init(self, first=True):
+        self.items = []
+        self.prices = []
+        self.first = first
+        for i in range(3):
+            item_class = items.ITEMS[self.rolls[i]][0]
+            item_args = items.ITEMS[self.rolls[i]][1]
+            item = item_class(*item_args)
+            price = self.rolls[i + 3] * item.shop_price // 1000
+            if price < self.world_interface.party_gold:
+                self.prices.append(price)
+                self.items.append(item)
 
     def get_text(self):
-        if self.world_interface.party_gold < self.shop_price:
-           return 'You found a shop, but everything it sells is way too expensive for you.'
-        return 'You find a shop selling a shiny %s. You manage to bargain it for %d gold.' % (self.item.name, self.shop_price)
+        if self.items:
+           return 'You found a shop selling a few valuable items.'
+        if self.first:
+           return 'You found a shop, sadly everything it sells is too expensive for you.'
+        return 'You shopped everything you could and must leave.'
 
     def get_choices(self):
-        if self.world_interface.party_gold < self.shop_price:
-            return ['Leave']
-        return ['Buy', 'Leave']
+        choices = []
+        for item, price in zip(self.items, self.prices):
+            choices.append('Buy %s for %d gold' % (item.name, price))
+        choices.append('Leave')
+        return choices
+
+    def choice(self, num):
+        if num >= len(self.items):
+            self.world_interface.next_question()
+            return
+        self.world_interface.party_gold -= self.prices[num]
+        self.world_interface.inventory.append(self.items[num])
+        self._init(False)
+        self.world_interface.display_choices()
 
     def choice_one(self):
-        if self.world_interface.party_gold < self.shop_price:
-            self.world_interface.next_question()
-        else:
-            self.world_interface.party_gold -= self.shop_price
-            self.world_interface.inventory.append(self.item)
-            self.world_interface.next_question()
+        self.choice(0)
 
     def choice_two(self):
+        self.choice(1)
+
+    def choice_three(self):
+        self.choice(2)
+
+    def choice_four(self):
         self.world_interface.next_question()
 
 class LootChoice(Choice):

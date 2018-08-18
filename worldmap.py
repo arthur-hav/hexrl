@@ -118,12 +118,13 @@ class WorldInterface(Interface, CascadeElement):
         self.inventory = []
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
-        self.choice_text = [TextSprite('', '#ffffff', 320, 400 + 16 * i) for i in range(3)] 
+        self.choice_text = [TextSprite('', '#ffffff', 320, 400 + 16 * i) for i in range(4)] 
         self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text + [self.cursor]
         Interface.__init__(self, father, keys = [
             ('1', lambda x: self.choose(0, x)),
             ('2', lambda x: self.choose(1, x)),
             ('3', lambda x: self.choose(2, x)),
+            ('4', lambda x: self.choose(3, x)),
             (K_ESCAPE, self.quit),
             ])
 
@@ -181,8 +182,10 @@ class WorldInterface(Interface, CascadeElement):
             self.current_question.choice_one()
         elif key == 1:
             self.current_question.choice_two()
-        else:
+        elif key == 2:
             self.current_question.choice_three()
+        else:
+            self.current_question.choice_four()
 
     def update(self, mouse_pos):
         self.inventory_display.update(mouse_pos)

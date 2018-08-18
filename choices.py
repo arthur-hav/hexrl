@@ -124,8 +124,6 @@ class NecromancerChoice(Choice):
 class GoodOldManChoice(Choice):
     def roll(self):
         self.rolls = [random.choice( list(items.ITEMS.keys()))]
-    def _init (self):
-        self.gold = get_question(self.world_interface.previous_question).REWARD * self.rolls[0] // 1000
 
     def get_text(self):
         return 'As you greet him, the old man tells you he is lost and leaves in a nearby village. You accompany him to safety. He thanks you warmly and offer you an item to show you his gratitude.'
@@ -134,7 +132,10 @@ class GoodOldManChoice(Choice):
         return ['OK']
 
     def choice_one(self):
-        self.world_interface.inventory.append(self.rolls[0])
+        item_class = items.ITEMS[self.rolls[0]][0]
+        item_args = items.ITEMS[self.rolls[0]][1]
+        item = item_class(*item_args)
+        self.world_interface.inventory.append(item)
         self.world_interface.next_question()
 
 class DemonChoice(Choice):

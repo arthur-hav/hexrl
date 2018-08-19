@@ -10,6 +10,7 @@ import os
 
 class EquipInterface(Interface, CascadeElement):
     def __init__(self, father, item):
+        CascadeElement.__init__(self)
         self.item = item
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.x, self.bg.rect.y = 262, 200
@@ -36,6 +37,7 @@ class EquipInterface(Interface, CascadeElement):
 
 class MainMenuInterface(Interface, CascadeElement):
     def __init__(self):
+        CascadeElement.__init__(self)
         self.bg = SimpleSprite('menu.png')
         self.hello = TextSprite('Choose a save slot with keys 1-3', '#ffffff', 320, 280)
         self.slots = []
@@ -114,6 +116,7 @@ class StatusDisplay(CascadeElement):
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
+        CascadeElement.__init__(self)
         self.inventory_display = StatusDisplay(self)
         self.mob_list = []
         self.current_question_key = ''
@@ -220,6 +223,9 @@ class WorldInterface(Interface, CascadeElement):
     def quit(self, mouse_pos):
         self.done()
 
+    def erase_save(self):
+        os.unlink('save%d.json' % self.slot)
+
     def load_game(self, slot):
         self.slot = slot
         with open('save%d.json' % slot) as f:
@@ -252,12 +258,4 @@ class WorldInterface(Interface, CascadeElement):
         self.this_day_question = 0
         self.day+= 1
         self.pick()
-
-#this calls the 'main' function when this script is executed
-if __name__ == '__main__':
-    DISPLAY.setup()
-    m = MainMenuInterface()
-    m.activate()
-    m.display()
-    DISPLAY.main()
 

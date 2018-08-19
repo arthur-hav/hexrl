@@ -54,6 +54,7 @@ class Display:
         #pygame.mouse.set_visible(0)
         #Display The Background
         pygame.display.flip()
+
     def main(self):
         while True:
             pygame.display.flip()
@@ -99,14 +100,17 @@ def load_sound(name):
     return sound
 
 #    whiff_sound = load_sound('whiff.wav')
-#    whiff_sound.play() 
-#classes for our game objects
+#    whiff_sound.play()
 
 
 class CascadeElement:
     def __init__(self, subsprites=[]):
         self.subsprites = subsprites
+        self.must_show = True
+
     def display(self):
+        if not self.must_show:
+            return
         for sprite in self.subsprites:
             sprite.display()
 
@@ -130,20 +134,21 @@ class SimpleSprite (pygame.sprite.Sprite):
             raise SystemExit(str(geterror()))
         return image
 
-    def __init__(self, image_name, subsprites=[]):
+    def __init__(self, image_name):
         super(SimpleSprite, self).__init__()
         self.image = self.load_image(image_name)
         rect = self.image.get_rect()
         self.image = pygame.transform.scale(self.image, (rect.w * 2, rect.h * 2)) 
         self.rect = self.image.get_rect()
-        self.subsprites = subsprites
         self.frame_name = image_name
+        self.must_show = True
 
     def move_to(self, x, y):
         self.rect.x, self.rect.y = x, y
 
     def display(self):
-        DISPLAY.screen.blit(self.image, self.rect)
+        if self.must_show:
+            DISPLAY.screen.blit(self.image, self.rect)
     
     def animate(self, frame_name):
         if frame_name == self.frame_name:
@@ -164,12 +169,14 @@ class Gauge(pygame.sprite.Sprite):
         self.color = color
         self.rect = self.image.get_rect()
         self.image.fill(pygame.Color(color))
+        self.must_show = True
 
     def move_to(self, x, y):
         self.rect.x, self.rect.y = x, y
 
     def display(self):
-        DISPLAY.screen.blit(self.image, self.rect)
+        if self.must_show:
+            DISPLAY.screen.blit(self.image, self.rect)
 
     def set_width (self, size):
         self.image = pygame.Surface((size, self.height))
@@ -191,7 +198,7 @@ class TextSprite:
         self.x = x
         self.y = y
         self.textsprites = []
-        self.is_displayed = False
+        self.must_show = True
         self._render(text)
 
     def _render(self, text):
@@ -216,7 +223,8 @@ class TextSprite:
         self._render(text)
 
     def display(self):
-        self.is_displayed = True
+        if not self.must_show:
+            return
         for sprite in self.textsprites:
             DISPLAY.screen.blit(sprite.image, sprite.rect)
 

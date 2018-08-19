@@ -25,7 +25,7 @@ def exp_discount():
     return random.randint(int(i*0.85), i)
 
 
-class Choice():
+class Choice:
     def __init__(self, world_interface):
         self.world_interface = world_interface
         self.rolls = []
@@ -69,12 +69,15 @@ class RestChoice(Choice):
 
 class GameOver(Choice):
     REWARD = 30
+
     def get_text(self):
         return 'Your are all dead...'
+
     def get_choices(self):
         return ['Back to main menu']
+
     def choice_one(self):
-        os.unlink('save.json')
+        self.world_interface.erase_save()
         self.world_interface.done()
 
 
@@ -122,10 +125,10 @@ class OldManChoice(Choice):
 class NecromancerChoice(Choice):
 
     def roll(self):
-        self.rolls = [random.randint(2,7), random.randint(0,5)]
+        self.rolls = [random.randint(4,7)]
 
     def _init(self):
-        self.mobs = [ ('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ]
+        self.mobs = [ ('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1) ]
         self.mobs.append(('Necromancer', (0, -6)))
 
     def get_text(self):
@@ -299,6 +302,7 @@ class NothingChoice(Choice):
 
 class TavernModal(Interface, CascadeElement):
     def __init__(self, father, tavern):
+        CascadeElement.__init__(self)
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.x, self.bg.rect.y = 262, 200
         self.text = TextSprite('Enter a word or two about your inquiry', '#ffffff', 274, 250)
@@ -306,7 +310,7 @@ class TavernModal(Interface, CascadeElement):
         self.word = ''
         self.tavern = tavern
         self.subsprites = [self.bg, self.text, self.question]
-        super().__init__(father, keys = [
+        Interface.__init__(self, father, keys = [
             (K_ESCAPE, lambda x: self.done()),
             ('[a-z ]', self.typing),
             (K_BACKSPACE, self.erase),
@@ -314,11 +318,11 @@ class TavernModal(Interface, CascadeElement):
             ])
 
     def typing(self, code):
-        self.word += code
+        self.word += code7
         self.question.set_text(self.word)
     
     def erase(self, _):
-        self.word = self.word[-1]
+        self.word = self.word[:-1]
         self.question.set_text(self.word)
 
     def validate(self, _):
@@ -339,7 +343,8 @@ class TavernChoice(Choice):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.text = "You enter a small tavern where you can gather information. You sit at the bar. The barman looks friendly and waits for you to order a drink."
+        self.text = "You enter a small tavern where you can gather information. " \
+                    "You sit at the bar. The barman looks friendly and waits for you to order a drink."
 
     def inquiry(self, word):
         self.text = self.ANSWERS.get(word, 'eh ?')
@@ -364,7 +369,9 @@ class StartChoice(Choice):
         self.rolls = [exp_reward()]
 
     def get_text(self):
-        return 'You start your adventure on the quest for the lost amulet of Yendor. Adventurers venture the land in the search for it as the king promised great wealth to whoever carried it back to him. You venture in the Lost lands, known for its great dangers...'
+        return 'You start your adventure on the quest for the lost amulet of Yendor. ' \
+               'Adventurers venture the land in the search for it as the king promised great wealth to whoever ' \
+               'carried it back to him. You venture in the Lost lands, known for its great dangers...'
 
     def get_choices(self):
         return ['Start the journey']

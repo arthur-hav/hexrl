@@ -9,7 +9,6 @@ import math
 class SideHealthGauge(Gauge):
     def __init__(self, creature):
         self.creature = creature
-        self.displayed = False
         super().__init__(4, 32, '#BB0008')
 
     def update(self):
@@ -24,7 +23,6 @@ class SideHealthGauge(Gauge):
 class SideShieldGauge(Gauge):
     def __init__(self, creature):
         self.creature = creature
-        self.displayed = False
         super().__init__(4, 32, '#BBCCFF')
 
     def update(self):
@@ -35,7 +33,8 @@ class SideShieldGauge(Gauge):
 
 
 class Creature(SimpleSprite, CascadeElement):
-    def __init__ (self, defkey, is_pc=False):
+    def __init__(self, defkey, is_pc=False):
+        CascadeElement.__init__(self)
         self.is_ranged = False
         self.health = 0
         self.damage = 0
@@ -49,7 +48,6 @@ class Creature(SimpleSprite, CascadeElement):
         self.defkey = defkey
         self.health_gauge = SideHealthGauge(self)
         self.shield_gauge = SideShieldGauge(self)
-        self.subsprites = [self.health_gauge, self.shield_gauge]
         self.load_def(defkey)
 
     def load_def(self, defkey):
@@ -69,6 +67,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.abilities = [template[0](**c_def) for template, c_def in zip(self.abilities, creature_ability_def)]
         self.maxhealth = self.health
         SimpleSprite.__init__(self, DEFS[defkey]['image_name'])
+        self.subsprites = [self.health_gauge, self.shield_gauge]
 
     def set_in_game(self, game, game_tile, next_action):
         self.tile = game_tile
@@ -238,7 +237,7 @@ class Creature(SimpleSprite, CascadeElement):
 
 DEFS = {
     'Fighter': {
-        'portrait': 'Fighter.png',
+        'portrait': 'portraits/Fighter.png',
         'image_name': 'tiles/Fighter.png',
         'health': 100,
         'damage': 14,
@@ -253,7 +252,7 @@ DEFS = {
         ]
     },
     'Barbarian': {
-        'portrait': 'Barbarian.png',
+        'portrait': 'portraits/Barbarian.png',
         'image_name': 'tiles/Barbarian.png',
         'health': 90,
         'damage': 16,
@@ -264,7 +263,7 @@ DEFS = {
         'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200})]
     },
     'Archer': {
-        'portrait': 'Archer.png',
+        'portrait': 'portraits/Archer.png',
         'image_name': 'tiles/Archer.png',
         'health': 80,
         'damage': 12,
@@ -272,7 +271,7 @@ DEFS = {
         'abilities': [('Arrow', {'ability_range' : 4, 'damagefactor':1, 'need_los' : True,})],
     },
     'Wizard': {
-        'portrait': 'Wizard.png',
+        'portrait': 'portraits/Wizard.png',
         'image_name': 'tiles/Wizard.png',
         'health': 70,
         'damage': 10,
@@ -281,7 +280,7 @@ DEFS = {
         'abilities': [('Fireball', {'ability_range' : 3, 'power':5, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':200,})],
     },
     'Enchantress': {
-        'portrait': 'Elf.png',
+        'portrait': 'portraits/Elf.png',
         'image_name': 'tiles/Elf.png',
         'health': 70,
         'damage': 10,
@@ -291,7 +290,7 @@ DEFS = {
 
 
     'Gobelin': {
-        'portrait': 'Gobelin.png',
+        'portrait': 'portraits/Gobelin.png',
         'image_name': 'tiles/Gobelin.png',
         'health': 50,
         'damage': 8,
@@ -299,7 +298,7 @@ DEFS = {
         'abilities': [],
     },
     'Troll': {
-        'portrait': 'Gobelin.png',
+        'portrait': 'portraits/Gobelin.png',
         'image_name': 'tiles/Troll.png',
         'health': 70,
         'armor':3,
@@ -309,7 +308,7 @@ DEFS = {
         'passives':[('Regeneration', {'rate': 6, 'maxhealth':None})]
     },
     'Skeleton': {
-        'portrait': 'Skeleton.png',
+        'portrait': 'portraits/Skeleton.png',
         'image_name': 'tiles/Skeleton.png',
         'description': 'Dangerous in great numbers.',
         'health': 60,
@@ -319,7 +318,7 @@ DEFS = {
     },
     'SkeletonArcher': {
         'is_ranged': True,
-        'portrait': 'Skeleton.png',
+        'portrait': 'portraits/Skeleton.png',
         'image_name': 'tiles/SkeletonArcher.png',
         'description': 'Ranged',
         'health': 50,
@@ -329,7 +328,7 @@ DEFS = {
     },
     'Necromancer': {
         'is_ranged': True,
-        'portrait': 'Necromancer.png',
+        'portrait': 'portraits/Necromancer.png',
         'image_name': 'tiles/Necromancer.png',
         'health': 70,
         'damage': 7,
@@ -339,7 +338,7 @@ DEFS = {
     },
     'Demon': {
         'is_ranged': False,
-        'portrait': 'Demon.png',
+        'portrait': 'portraits/Demon.png',
         'image_name': 'tiles/Demon.png',
         'health': 200,
         'damage': 15,
@@ -350,7 +349,7 @@ DEFS = {
     },
     'Imp': {
         'is_ranged': True,
-        'portrait': 'Imp.png',
+        'portrait': 'portraits/Imp.png',
         'image_name': 'tiles/Imp.png',
         'health': 80,
         'damage': 8,

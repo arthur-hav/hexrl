@@ -12,21 +12,22 @@ class EquipInterface(Interface, CascadeElement):
         self.item = item
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.x, self.bg.rect.y = 262, 200
-        self.text = TextSprite('Equip adventurer with [1-5]. [Esc] to cancel.', '#ffffff', 274, 250)
+        self.text = TextSprite('Equip adventurer with [1-5]. Unequip with [0]. [Esc] to cancel.', '#ffffff', 274, 250)
         self.stats = TextSprite(str(item), '#ffffff', 274, 220, maxlen=350)
         self.subsprites = [self.bg, self.stats, self.text]
         Interface.__init__(self, father, keys = [
             (K_ESCAPE, lambda x: self.done()),
-            ('1', lambda x: self.equip(0)),
-            ('2', lambda x: self.equip(1)),
-            ('3', lambda x: self.equip(2)),
-            ('4', lambda x: self.equip(3)),
-            ('5', lambda x: self.equip(4)),
+            ('[1-5]', self.equip),
+            ('0', self.unequip),
             ])
     def equip(self, teamnum):
         if teamnum > len(self.father.pc_list):
             return
-        self.item.equip(self.father.pc_list[teamnum])
+        self.item.equip(self.father.pc_list[int(teamnum)])
+        self.done()
+    def unequip(self, key):
+        if self.item.equipped_to:
+            self.item.unequip()
         self.done()
 
 class MainMenuInterface(Interface, CascadeElement):
@@ -43,17 +44,15 @@ class MainMenuInterface(Interface, CascadeElement):
         self.subsprites = [self.bg, self.hello] + self.slots
         Interface.__init__(self, None, keys = [
             (K_ESCAPE, lambda x: self.done()),
-            ('1', lambda x: self.start(1)),
-            ('2', lambda x: self.start(2)),
-            ('3', lambda x: self.start(3)),
+            ('[1-3]', self.start),
             ])
 
     def start(self, slot):
         wi = WorldInterface(self)
         try:
-            wi.load_game(slot)
+            wi.load_game(int(slot))
         except FileNotFoundError as e:
-            wi.new_game(slot)
+            wi.new_game(int(slot))
         wi.activate()
         wi.display()
         self.desactivate()
@@ -121,10 +120,7 @@ class WorldInterface(Interface, CascadeElement):
         self.choice_text = [TextSprite('', '#ffffff', 320, 400 + 16 * i) for i in range(4)] 
         self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text + [self.cursor]
         Interface.__init__(self, father, keys = [
-            ('1', lambda x: self.choose(0, x)),
-            ('2', lambda x: self.choose(1, x)),
-            ('3', lambda x: self.choose(2, x)),
-            ('4', lambda x: self.choose(3, x)),
+            ('[1-4]', self.choose),
             (K_ESCAPE, self.quit),
             ])
 
@@ -175,14 +171,15 @@ class WorldInterface(Interface, CascadeElement):
             self.choice_text[key].set_text(choice_text)
         self.current_text.set_text(self.current_question.get_text())
 
-    def choose(self, key, tile):
-        if key >= len(self.current_question.get_choices()):
+    def choose(self, key):
+        key = int(key)
+        if key > len(self.current_question.get_choices()):
             return
-        if key == 0:
+        if key == 1:
             self.current_question.choice_one()
-        elif key == 1:
-            self.current_question.choice_two()
         elif key == 2:
+            self.current_question.choice_two()
+        elif key == 3:
             self.current_question.choice_three()
         else:
             self.current_question.choice_four()

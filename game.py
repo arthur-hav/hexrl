@@ -21,10 +21,10 @@ class QuitInterface(Interface, CascadeElement):
         self.subsprites = [bg, t1]
         self.display()
 
-    def cancel(self, mouse_pos):
+    def cancel(self, key):
         self.done()
 
-    def confirm(self, mouse_pos):
+    def confirm(self, key):
         exit(0)
 
 class GameTile():
@@ -115,7 +115,7 @@ Use special abilities with numpad [1-3], confirm target with mouse click or [Ent
         self.subsprites = [t]
         self.display()
 
-    def cancel(self, mouse_pos):
+    def cancel(self, key):
         self.done()
 
 class Tooltip(CascadeElement):
@@ -142,11 +142,11 @@ class TargetInterface(Interface):
         self.valid_targets = valid_targets
         self.ability = ability
         self.father.game.cursor.animate('icons/target-cursor.png')
-    def cancel(self, mouse_pos):
+    def cancel(self, key):
         self.target = None
         self.father.game.selected = None
         self.done()
-    def tab(self, mouse_pos):
+    def tab(self, key):
         index = self.valid_targets.index(self.target)
         index = (index + 1) % len(self.valid_targets)
         self.target = self.valid_targets[index]
@@ -572,42 +572,18 @@ class GameInterface (Interface):
     def __init__ (self, father, mob_list):
         self.game = Game(father.pc_list, mob_list)
         Interface.__init__(self, father, keys=[
-            ('1', self.ability_one,),
-            ('2', self.ability_two,),
-            ('3', self.ability_three,),
-            ('4', self.go_sw),
-            ('5', self.go_s),
-            ('6', self.go_se),
-            ('7', self.go_nw),
-            ('8', self.go_n),
-            ('9', self.go_ne),
+            ('[1-3]', self.ability,),
+            ('[4-9]', self.go),
             ('0', self.pass_turn),
-            ('?', self.disp_help),
+            ('\?', self.disp_help),
             (K_ESCAPE, self.quit)])
 
 
     def on_click(self, mouse_pos):
         pass
 
-    def go_s(self, _):
-        self.go(1)
-
-    def go_sw(self, _):
-        self.go(0)
-
-    def go_nw(self, _):
-        self.go(3)
-
-    def go_n(self, _):
-        self.go(4)
-
-    def go_ne(self, _):
-        self.go(5)
-
-    def go_se(self, _):
-        self.go(2)
-
-    def go(self, index):
+    def go(self, code):
+        index = int(code) - 4
         if not self.game.to_act or not self.game.to_act.is_pc:
             return
         self.game.to_act.move_or_attack(self.game.to_act.tile.neighbours()[index])
@@ -622,43 +598,15 @@ class GameInterface (Interface):
         self.game.to_act.idle()
         self.game.new_turn()
 
-    def ability_one(self, mouse_pos):
+    def ability(self, key):
         if not self.game.to_act or not self.game.to_act.is_pc:
             return
-        if len(self.game.to_act.abilities) < 1:
+        if len(self.game.to_act.abilities) < int(key):
             return
-        if self.game.to_act.ability_cooldown[0] > 0:
-            return
-        pc = self.game.to_act
-        self._ability(pc, pc.abilities[0])
-
-    def ability_two(self, mouse_pos):
-        if not self.game.to_act or not self.game.to_act.is_pc:
-            return
-        if len(self.game.to_act.abilities) < 2:
-            return
-        if self.game.to_act.ability_cooldown[1] > 0:
+        if self.game.to_act.ability_cooldown[int(key) - 1] > 0:
             return
         pc = self.game.to_act
-        self._ability(pc, pc.abilities[1])
-
-    def ability_three(self, mouse_pos):
-        if not self.game.to_act or not self.game.to_act.is_pc:
-            return
-        if len(self.game.to_act.abilities) < 3:
-            return
-        if self.game.to_act.ability_cooldown[2] > 0:
-            return
-        pc = self.game.to_act
-        self._ability(pc, pc.abilities[2])
-
-    def on_click(self, mouse_pos):
-        tile = self.game.arena.get_tile_for_mouse(mouse_pos)
-        if self.game.selected and self.game.selected == tile:
-            self.selected = None
-        self.game.selected = tile
-
-    def _ability(self, pc, ability):
+        ability = pc.abilities[int(key) - 1]
         valid_targets = self.game.get_valid_targets(self.game.to_act, ability)
         if not valid_targets:
             self.game.log_display.push_text('No valid target.')
@@ -666,6 +614,13 @@ class GameInterface (Interface):
         t = TargetInterface(self, valid_targets, ability)
         t.activate()
         self.desactivate()
+
+
+    def on_click(self, mouse_pos):
+        tile = self.game.arena.get_tile_for_mouse(mouse_pos)
+        if self.game.selected and self.game.selected == tile:
+            self.selected = None
+        self.game.selected = tile
 
     def quit(self, _):
         qi = QuitInterface(self)

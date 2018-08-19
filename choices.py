@@ -1,6 +1,8 @@
 import random
 import os
 import items
+from pygame.locals import *
+from display import Interface, SimpleSprite, TextSprite, CascadeElement
 
 def get_question(key):
     if key in NORMAL_CHOICES:
@@ -265,6 +267,63 @@ class NothingChoice(Choice):
     def choice_one(self):
         self.world_interface.next_question()
 
+class TavernModal(Interface, CascadeElement):
+    def __init__(self, father, tavern):
+        self.bg = SimpleSprite('helpmodal.png')
+        self.bg.rect.x, self.bg.rect.y = 262, 200
+        self.text = TextSprite('Enter a word or two about your inquiry', '#ffffff', 274, 250)
+        self.question = TextSprite('', '#ffffff', 274, 300)
+        self.word = ''
+        self.tavern = tavern
+        self.subsprites = [self.bg, self.text, self.question]
+        super().__init__(father, keys = [
+            (K_ESCAPE, lambda x: self.done()),
+            ('[a-z ]', self.typing),
+            (K_BACKSPACE, self.erase),
+            (K_RETURN, self.validate),
+            ])
+    def typing(self, code):
+        self.word += code
+        self.question.set_text(self.word)
+    
+    def erase(self, _):
+        self.word = self.word[-1]
+        self.question.set_text(self.word)
+
+    def validate(self, _):
+        self.tavern.inquiry(self.word)
+        self.done()
+
+    def update(self, mouse_pos):
+        self.display()
+
+class TavernChoice(Choice):
+    ANSWERS = { 
+            'name': 'My name is Barnabas',
+            'job': 'I run the tavern, of course ! If you wonder, the business is going fairly well you may say.',
+            'old man': 'Take care, some are not what they seem to be.',
+            'gobelins': 'Such a plague they are, damn right',
+    }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.text = "You enter a small tavern where you can gather information. You sit at the bar. The barman looks friendly and waits for you to order a drink."
+    def inquiry(self, word):
+        self.text = self.ANSWERS.get(word, 'eh ?')
+        self.world_interface.display_choices()
+
+    def get_text(self):
+        return self.text
+
+    def get_choices(self):
+        return ['Ask...', 'Leave']
+
+    def choice_one(self):
+        t = TavernModal(self.world_interface, self)
+        t.activate()
+
+    def choice_two(self):
+        self.world_interface.next_question()
+
 class StartChoice(Choice):
     def roll(self):
         self.rolls = [exp_reward()]
@@ -285,7 +344,8 @@ NORMAL_CHOICES = {
     'demon': DemonChoice,
     'nothing':NothingChoice,
     'oldman': OldManChoice,
-    'shop': ShopChoice
+    'shop': ShopChoice,
+    'tavern': TavernChoice
 }
 SPECIAL_CHOICES = {
     'rest':RestChoice,

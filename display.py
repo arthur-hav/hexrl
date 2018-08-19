@@ -2,6 +2,7 @@
 
 #Import Modules
 import os, pygame
+import re
 from pygame.locals import *
 from pygame.compat import geterror
 import sys
@@ -56,10 +57,10 @@ class Display():
                 if event.type == QUIT:
                     exit(0)
                 elif event.type == KEYDOWN:
-                    for handler in self.key_handlers[event.unicode]:
-                        handler(pos)
-                    for handler in self.key_handlers[event.key]:
-                        handler(pos)
+                    for k, handlers in list(self.key_handlers.items()):
+                        for handler in handlers:
+                            if (isinstance(k, str) and re.match(k, event.unicode)) or k == event.key:
+                                handler(event.unicode)
                 elif event.type == MOUSEBUTTONDOWN:
                     for handler in self.mouse_handlers:
                         handler(pos)

@@ -235,8 +235,13 @@ class GameInterface (Interface):
         if not self.game.to_act or not self.game.to_act.is_pc:
             return
         if len(self.game.to_act.abilities) < int(key):
+            self.game.log_display.push_text('Unknown ability')
             return
-        if self.game.to_act.ability_cooldown[int(key) - 1] > 0:
+        if self.game.to_act.silenced:
+            self.game.log_display.push_text('Not while silenced !')
+            return
+        if self.game.to_act.abilities[int(key) - 1].current_cooldown > 0:
+            self.game.log_display.push_text('Ability is currently in cooldown')
             return
         pc = self.game.to_act
         ability = pc.abilities[int(key) - 1]

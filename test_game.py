@@ -98,6 +98,6 @@ class TestCreature:
         c1.use_ability(c1.abilities[0], c1.tile)
 
         assert c1.next_action == 100
-        assert c1.ability_cooldown[0] == 200
+        assert c1.abilities[0].current_cooldown == 200
         assert c2.health == c2.maxhealth - round(1.2 * c1.damage)
 

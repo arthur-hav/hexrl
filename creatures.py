@@ -43,6 +43,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.passives = []
         self.items = []
         self.rooted = []
+        self.silenced = []
         self.frames = []
         self.is_pc = is_pc
         self.defkey = defkey
@@ -76,8 +77,6 @@ class Creature(SimpleSprite, CascadeElement):
         self.game.creatures[game_tile] = self
         self.next_action = next_action
         self.shield = 0
-        self.ability_cooldown = [0, 0, 0]
-        self.status_cooldown = []
         self.status = []
 
     def end_game(self):
@@ -119,16 +118,10 @@ class Creature(SimpleSprite, CascadeElement):
     # Below this : only valid if previously set_in_game
 
     def tick(self, elapsed_time):
-        for i, v in enumerate(self.ability_cooldown):
-            self.ability_cooldown[i] = max(0, v - elapsed_time)
-        for status in self.status:
+        for ability in self.abilities:
+            ability.tick(self, elapsed_time)
+        for status in self.status.copy():
             status.tick(self, elapsed_time)
-        for i, v in enumerate(self.status_cooldown):
-            self.status_cooldown[i] = max(0, v - elapsed_time)
-            if self.status_cooldown[i] == 0:
-                self.status[i].status_end(self)
-                self.status.pop(i)
-                self.status_cooldown.pop(i)
 
     def step_to(self, target):
         return min(self.tile.neighbours(), key = lambda x: x.dist(target))
@@ -173,11 +166,19 @@ class Creature(SimpleSprite, CascadeElement):
         self.end_act()
 
     def use_ability(self, ability, target):
+        if self.silenced:
+            return
         ability.apply_ability(self, target)
-        if ability.cooldown:
-            self.ability_cooldown[ self.abilities.index(ability) ] = ability.cooldown
         if not ability.is_instant:
             self.end_act()
+
+    def add_status(self, status_effect):
+        for status in self.status:
+            if status.name == status_effect.name:
+                status.duration = max(status_effect.duration, status.duration)
+                return
+        self.status.append(status_effect)
+        status_effect.status_start(self)
 
     def take_damage(self, number, dmg_type='physical'):
         if dmg_type == 'physical' and self.armor > 0:
@@ -196,7 +197,6 @@ class Creature(SimpleSprite, CascadeElement):
             for status in self.status:
                 status.status_end(self)
             self.status = []
-            self.status_cooldown = []
             self.passives = []
             self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.tile]
@@ -212,13 +212,13 @@ class Creature(SimpleSprite, CascadeElement):
                 self.move_or_attack(tile)
                 return
         # CASTING
-        if self.abilities:
-            ability_num = random.randint(0, len(self.abilities) - 1)
-            if self.ability_cooldown[ability_num] == 0:
-                valid_targets = self.game.get_valid_targets(self, self.abilities[ability_num])
+        if self.abilities and not self.silenced:
+            ability = random.choice(self.abilities)
+            if ability.current_cooldown == 0:
+                valid_targets = self.game.get_valid_targets(self, ability)
                 if valid_targets:
                     target = random.choice(valid_targets)
-                    self.use_ability(self.abilities[ability_num], target)
+                    self.use_ability(ability, target)
                     return
         # HUNTING
         if not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25:
@@ -351,10 +351,19 @@ DEFS = {
         'is_ranged': True,
         'portrait': 'portraits/Imp.png',
         'image_name': 'tiles/Imp.png',
-        'health': 80,
+        'health': 40,
         'damage': 8,
         'name': 'Imp',
         'description': 'Small caster demon',
-        'abilities': [('Lightning', {'ability_range' : 5, 'power':0, 'damagefactor':1, 'cooldown':200,})],
+        'abilities': [('Lightning', {'ability_range' : 5, 'power':4, 'damagefactor':1, 'cooldown':200,})],
+    },
+    'Banshee': {
+        'portrait': 'portraits/Necromancer.png',
+        'image_name': 'tiles/banshee.png',
+        'health': 50,
+        'damage': 10,
+        'armor': 10,
+        'name': 'Banshee',
+        'abilities': [('Scream', {'ability_range': 2, 'damagefactor': 1, 'cooldown': 200, 'duration':300 })],
     },
 }

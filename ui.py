@@ -34,19 +34,16 @@ class InfoDisplay (CascadeElement):
                            self.ability_display, self.passive_display, self.tooltip]
 
     def update(self, creature, mouse_pos):
+        self.tooltip.must_show = True
         if self.health.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Health\nA creature is killed if this reaches 0.")
-            self.tooltip.must_show = True
         elif self.damage.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Damage\nDamage inflicted per melee attack. Also influences ability damage.")
-            self.tooltip.must_show = True
         elif creature.magic_resist and self.mr.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Magic resist\nDivides magic damage inflicted by 1 + MR/10.")
-            self.tooltip.must_show = True
         elif creature.armor and self.armor.rect.collidepoint(mouse_pos):
             self.tooltip.set_text("Armor\nDivides physical damage inflicted by 1 + ARM/10.")
-            self.tooltip.must_show = True
-        elif self.tooltip in self.subsprites:
+        else:
             self.tooltip.must_show = False
         self.status_effect_display.update(creature, mouse_pos)
         if not creature:
@@ -59,14 +56,14 @@ class InfoDisplay (CascadeElement):
             self.mr_stat.set_text(str(creature.magic_resist))
             self.mr.must_show = True
             self.mr_stat.must_show = True
-        elif self.mr in self.subsprites:
+        else:
             self.mr.must_show = False
             self.mr_stat.must_show = False
         if creature.armor:
             self.armor_stat.set_text(str(creature.armor))
             self.armor.must_show = True
             self.armor_stat.must_show = True
-        elif self.armor in self.subsprites:
+        else:
             self.armor.must_show = False
             self.armor_stat.must_show = False
         self.ability_display.update(creature, mouse_pos)
@@ -85,8 +82,8 @@ class AbilityDisplay (CascadeElement):
         self.subsprites = [self.text]
         for i, ability in enumerate(creature.abilities):
             xoff, yoff = 152 * (i % 2), 40 * (i // 2)
-            if creature.ability_cooldown[i]:
-                text = '<%d>' % ceil(creature.ability_cooldown[i] / 100)
+            if ability.current_cooldown:
+                text = '<%d>' % ceil(ability.current_cooldown / 100)
                 image = ability.image_cd
             else:
                 text = ability.name
@@ -121,7 +118,7 @@ class StatusEffectDisplay (CascadeElement):
         self.subsprites = [self.text]
         for i, status in enumerate(creature.status):
             xoff, yoff = 0, 32 * i
-            text = '%s <%d>' % (status.name, ceil(creature.status_cooldown[i] / 100))
+            text = '%s <%d>' % (status.name, ceil(creature.status[i].duration / 100))
             text_sprite = TextSprite(text, '#ffffff', self.basex + 38 + xoff, self.basey + 24 + yoff)
             sprite = SimpleSprite(status.image_name)
             sprite.rect.x, sprite.rect.y = (self.basex + xoff, self.basey + 20 + yoff)

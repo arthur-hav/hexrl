@@ -60,9 +60,7 @@ class CooldownReduction(Passive):
 
         def use_ability(ability, target):
             old_use(ability, target)
-            i = creature.abilities.index(ability) 
-            val = creature.ability_cooldown[i]
-            creature.ability_cooldown[i] = round(10 * val / (self.cdr + 10))
+            ability.current_cooldown = round(10 * ability.current_cooldown / (self.cdr + 10))
         creature.use_ability = use_ability
 
     def get_short_desc(self):
@@ -73,7 +71,7 @@ class CooldownReduction(Passive):
 
 
 PASSIVES = {
-        'Regeneration': (RegenerationPassive, {'name': 'Regeneration', 'image_name':'icons/heart.png'}),
+        'Regeneration': (RegenerationPassive, {'name': 'Regeneration', 'image_name': 'icons/heart.png'}),
         'Shield': (ShieldPassive, {'name': 'Shield', 'image_name':'icons/shield-icon.png'}),
         'Fastcast': (CooldownReduction, {'name': 'Fastcast', 'image_name':'icons/smite.png'}),
 }

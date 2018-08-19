@@ -114,9 +114,11 @@ class OldManChoice(Choice):
     def choice_one(self):
         if self.rolls[0]:
             self.world_interface.current_question = get_question('necromancer')(self.world_interface)
+            self.world_interface.save_game()
             self.world_interface.display_choices()
         else:
             self.world_interface.current_question = get_question('goodoldman')(self.world_interface)
+            self.world_interface.save_game()
             self.world_interface.display_choices()
 
     def choice_two(self):
@@ -160,6 +162,24 @@ class GoodOldManChoice(Choice):
         self.world_interface.inventory.append(item)
         self.world_interface.next_question()
 
+
+class BansheeChoice(Choice):
+
+    def roll(self):
+        self.rolls = [random.randint(5, 7)]
+
+    def _init(self):
+        self.mobs = [('Banshee', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1)]
+
+    def get_text(self):
+        return 'You hear screams that tell you no good. Adventurers watch each others in terror, as they know ' \
+               'what is coming next. They are called the Banshees.'
+
+    def get_choices(self):
+        return ['Fight']
+
+    def choice_one(self):
+        return self.world_interface.start_game(self.mobs)
 
 class DemonChoice(Choice):
     REWARD = 30
@@ -388,7 +408,8 @@ NORMAL_CHOICES = {
     'nothing': NothingChoice,
     'oldman': OldManChoice,
     'shop': ShopChoice,
-    'tavern': TavernChoice
+    'tavern': TavernChoice,
+    'banshee': BansheeChoice
 }
 SPECIAL_CHOICES = {
     'rest': RestChoice,

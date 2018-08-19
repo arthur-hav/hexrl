@@ -10,6 +10,7 @@ class Ability(SimpleSprite):
         self.image_name = image_name
         self.image_cd = image_name
         self.cooldown = 0
+        self.current_cooldown = 0
         self.ability_range = 0
         self.aoe = 0
         self.power = 0
@@ -27,6 +28,14 @@ class Ability(SimpleSprite):
     def splash_hint(self, creature, selected, target):
         return False
 
+    def apply_ability(self, creature, target):
+        self.current_cooldown = self.cooldown
+
+    def tick(self, creature, elapsed_time):
+        self.current_cooldown = max(0, self.current_cooldown - elapsed_time)
+
+
+
 
 class BoltAbility(Ability):
     def is_valid_target(self, creature, target):
@@ -35,6 +44,7 @@ class BoltAbility(Ability):
                 and creature.game.creatures[target].is_pc != creature.is_pc
 
     def apply_ability(self, creature, target):
+        super().apply_ability(creature, target)
         damage = self.power + round(creature.damage * self.damagefactor)
         for tile in creature.tile.raycast(target, go_through=True):
             if tile.dist(creature.tile) > self.ability_range + 0.25:
@@ -55,6 +65,7 @@ class DamageAbility(Ability):
                 and creature.game.creatures[target].is_pc != creature.is_pc
 
     def apply_ability(self, creature, target):
+        super().apply_ability(creature, target)
         creature.health -= self.health_cost
         if creature.health <= 0:
             creature.health = 1
@@ -85,7 +96,8 @@ class ShieldAbility(Ability):
                 and creature.game.creatures[target].is_pc == creature.is_pc
 
     def apply_ability(self, creature, target):
-        power = self.power #+ round(creature.damage * self.damagefactor)
+        super().apply_ability(creature, target)
+        power = self.power  # + round(creature.damage * self.damagefactor)
         target_cr = creature.game.creatures[target]
         target_cr.shield = max(target_cr.shield, power)
         creature.game.log_display.push_text("%s gains a magical shield." % (target_cr.name))
@@ -97,6 +109,7 @@ class NovaAbility(Ability):
         return target == creature.tile
 
     def apply_ability(self, creature, target):
+        super().apply_ability(creature, target)
         damage = round(creature.damage * self.damagefactor)
         for cr in list(creature.game.creatures.values()):
             if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
@@ -112,6 +125,7 @@ class Invocation(Ability):
         return self.range_hint(creature, target) and target not in creature.game.creatures
 
     def apply_ability(self, creature, target):
+        super().apply_ability(creature, target)
         from creatures import Creature
         c = Creature(self.defkey)
         c.set_in_game(creature.game, target, creature.next_action + 100)
@@ -126,18 +140,13 @@ class StatusAbility(Ability):
         return self.range_hint(creature, target) and target in creature.game.creatures
 
     def apply_ability(self, creature, target):
+        super().apply_ability(creature, target)
         from status import STATUSES
         status_class = STATUSES[self.name][0]
         status_args = STATUSES[self.name][1]
-        status_effect = status_class(*status_args)
+        status_effect = status_class(self.duration, *status_args)
         target_cr = creature.game.creatures[target]
-        for i, status in enumerate(target_cr.status):
-            if status_class == status.__class__:
-                target_cr.status_cooldown[i] = max(target_cr.status_cooldown[i], self.duration)
-                return
-        target_cr.status.append(status_effect)
-        target_cr.status_cooldown.append(self.duration)
-        status_effect.status_start(target_cr)
+        target_cr.add_status(status_effect)
 
 
 class TeleportAbility(Ability):
@@ -145,6 +154,7 @@ class TeleportAbility(Ability):
         return self.range_hint(creature, target) and target not in creature.game.creatures
 
     def apply_ability(self, creature, target):
+        super().apply_ability(creature, target)
         creature.game.creatures[target] = creature
         del creature.game.creatures[creature.tile]
         creature.tile = target
@@ -156,6 +166,24 @@ class EnnemyStatusAbility(StatusAbility):
         return super().is_valid_target(creature, target) and creature.game.creatures[target].is_pc != creature.is_pc
 
 
+class ScreamAbility(Ability):
+    def is_valid_target(self, creature, target):
+        return target == creature.tile
+
+    def apply_ability(self, creature, target):
+        super().apply_ability(creature, target)
+        damage = round(creature.damage * self.damagefactor)
+        from status import STATUSES
+        status_class = STATUSES['Silence'][0]
+        status_args = STATUSES['Silence'][1]
+        status_effect = status_class(self.duration, *status_args)
+        for cr in list(creature.game.creatures.values()):
+            if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
+                cr.take_damage(damage, 'magic')
+                creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
+                cr.add_status(status_effect)
+
+
 ABILITIES = {
         'Raise Undead': (Invocation, {'name':'Raise undead', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Skeleton','description':'Places a skeleton on an empty tile of the battlefield.'}),
         'Call Imp': (Invocation, {'name':'Call Imp', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Imp', 'description':'Places an imp on an empty tile of the battlefield.'}),
@@ -163,9 +191,10 @@ ABILITIES = {
         'Smite': (DamageAbility, {'name' : 'Smite', 'image_name' : 'icons/smite.png',  'description' : 'Inflicts true damage in exchange for health', 'damage_type':'true'}),
         'Fireball': (AoeAbility, {'name' : 'Fireball', 'image_name' : 'icons/fireball.png', 'image_cd':'icons/fireball-cd.png', 'description' : 'Ranged attack inflicting splash damage on adjacent ennemies.', 'damage_type':'magic'}),
         'Lightning': (BoltAbility, {'name' : 'Lightning', 'image_name' : 'icons/lightning.png', 'image_cd':'icons/lightning-cd.png','description':'Ranged attack passing through a line of ennemies, damaging them.', 'damage_type':'magic'}),
-        'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png',  'description': 'Simultaneously attack all ennemies in melee range', 'damage_type':'physical'}),
+        'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png', 'image_cd':'icons/cleave-cd.png', 'description': 'Simultaneously attack all ennemies in melee range', 'damage_type':'physical'}),
         'Shield': (ShieldAbility, {'name' : 'Shield', 'image_name':'icons/shield-icon.png', 'image_cd': 'icons/shield-icon-cd.png', 'description':'Shields an ally for a small amount of damage.'}),
         'Bloodlust': (StatusAbility, {'name':'Bloodlust', 'image_name':'icons/bloodlust.png', 'image_cd':'icons/bloodlust-cd.png', 'description':'Greatly enhances damage for a short period. Cast is instantaneous.'}),
         'Root': (EnnemyStatusAbility, {'name':'Root', 'image_name':'icons/root.png', 'image_cd':'icons/root-cd.png', 'description':'Target is made unable to move for a duration, and takes damage over time.'}),
         'Blink': (TeleportAbility, {'name':'Blink', 'image_name':'icons/blink.png', 'image_cd':'icons/blink-cd.png', 'description':'Transport yourself a short distance'}),
+        'Scream': (ScreamAbility, {'name':'Scream', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png', 'description':'Damages and silences nearby ennemies, making them unable to use abilities'})
 }

@@ -156,7 +156,7 @@ class WorldInterface(Interface, CascadeElement):
         ]
         self.pick()
 
-    def pick (self):
+    def pick(self):
         self.previous_question = self.current_question_key
         if not any((pc.health > 0 for pc in self.pc_list)):
             self.current_question_key = 'gameover'

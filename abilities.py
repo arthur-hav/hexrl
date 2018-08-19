@@ -1,5 +1,6 @@
 from display import SimpleSprite
 
+
 class Ability(SimpleSprite):
     def __init__(self, name, image_name, **kwargs):
         super().__init__(image_name)
@@ -26,11 +27,13 @@ class Ability(SimpleSprite):
     def splash_hint(self, creature, selected, target):
         return False
 
+
 class BoltAbility(Ability):
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) \
                 and target in creature.game.creatures \
                 and creature.game.creatures[target].is_pc != creature.is_pc
+
     def apply_ability(self, creature, target):
         damage = self.power + round(creature.damage * self.damagefactor)
         for tile in creature.tile.raycast(target, go_through=True):
@@ -43,6 +46,7 @@ class BoltAbility(Ability):
 
     def splash_hint(self, creature, selected, target):
         return target in creature.tile.raycast(selected, go_through=True) and self.range_hint(creature, target)
+
 
 class DamageAbility(Ability):
     def is_valid_target(self, creature, target):
@@ -59,6 +63,7 @@ class DamageAbility(Ability):
         target_cr.take_damage(damage, self.damage_type)
         creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
+
 class AoeAbility(DamageAbility):
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
@@ -72,18 +77,22 @@ class AoeAbility(DamageAbility):
     def splash_hint(self, creature, selected, target):
         return target in selected.neighbours()
 
+
 class ShieldAbility(Ability):
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) \
                 and target in creature.game.creatures \
                 and creature.game.creatures[target].is_pc == creature.is_pc
+
     def apply_ability(self, creature, target):
         power = self.power #+ round(creature.damage * self.damagefactor)
         target_cr = creature.game.creatures[target]
         target_cr.shield = max(target_cr.shield, power)
         creature.game.log_display.push_text("%s gains a magical shield." % (target_cr.name))
 
+
 class NovaAbility(Ability):
+
     def is_valid_target(self, creature, target):
         return target == creature.tile
 
@@ -98,6 +107,7 @@ class NovaAbility(Ability):
         return self.range_hint(creature, target)
 
 class Invocation(Ability):
+
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) and target not in creature.game.creatures
 
@@ -109,7 +119,9 @@ class Invocation(Ability):
         c.game.subsprites.insert(7, c)
         creature.game.log_display.push_text("%s raises %s !" % (creature.name, c.name))
 
+
 class StatusAbility(Ability):
+
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) and target in creature.game.creatures
 
@@ -127,6 +139,7 @@ class StatusAbility(Ability):
         target_cr.status_cooldown.append(self.duration)
         status_effect.status_start(target_cr)
 
+
 class TeleportAbility(Ability):
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) and target not in creature.game.creatures
@@ -136,6 +149,7 @@ class TeleportAbility(Ability):
         del creature.game.creatures[creature.tile]
         creature.tile = target
         creature.rect.x, creature.rect.y = creature.tile.display_location()
+
 
 class EnnemyStatusAbility(StatusAbility):
     def is_valid_target(self, creature, target):
@@ -149,8 +163,8 @@ ABILITIES = {
         'Smite': (DamageAbility, {'name' : 'Smite', 'image_name' : 'icons/smite.png',  'description' : 'Inflicts true damage in exchange for health', 'damage_type':'true'}),
         'Fireball': (AoeAbility, {'name' : 'Fireball', 'image_name' : 'icons/fireball.png', 'image_cd':'icons/fireball-cd.png', 'description' : 'Ranged attack inflicting splash damage on adjacent ennemies.', 'damage_type':'magic'}),
         'Lightning': (BoltAbility, {'name' : 'Lightning', 'image_name' : 'icons/lightning.png', 'image_cd':'icons/lightning-cd.png','description':'Ranged attack passing through a line of ennemies, damaging them.', 'damage_type':'magic'}),
-        'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png',  'description':'Simultaneously attack all ennemies in melee range', 'damage_type':'physical'}),
-        'Shield': (ShieldAbility, {'name' : 'Shield', 'image_name':'icons/shield-icon.png', 'image_cd':'icons/shield-icon-cd.png', 'description':'Shields an ally for a small amount of damage.'}),
+        'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png',  'description': 'Simultaneously attack all ennemies in melee range', 'damage_type':'physical'}),
+        'Shield': (ShieldAbility, {'name' : 'Shield', 'image_name':'icons/shield-icon.png', 'image_cd': 'icons/shield-icon-cd.png', 'description':'Shields an ally for a small amount of damage.'}),
         'Bloodlust': (StatusAbility, {'name':'Bloodlust', 'image_name':'icons/bloodlust.png', 'image_cd':'icons/bloodlust-cd.png', 'description':'Greatly enhances damage for a short period. Cast is instantaneous.'}),
         'Root': (EnnemyStatusAbility, {'name':'Root', 'image_name':'icons/root.png', 'image_cd':'icons/root-cd.png', 'description':'Target is made unable to move for a duration, and takes damage over time.'}),
         'Blink': (TeleportAbility, {'name':'Blink', 'image_name':'icons/blink.png', 'image_cd':'icons/blink-cd.png', 'description':'Transport yourself a short distance'}),

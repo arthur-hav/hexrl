@@ -7,6 +7,7 @@ import items
 import json
 import os
 
+
 class EquipInterface(Interface, CascadeElement):
     def __init__(self, father, item):
         self.item = item
@@ -20,15 +21,18 @@ class EquipInterface(Interface, CascadeElement):
             ('[1-5]', self.equip),
             ('0', self.unequip),
             ])
+
     def equip(self, teamnum):
         if teamnum > len(self.father.pc_list):
             return
         self.item.equip(self.father.pc_list[int(teamnum)])
         self.done()
+
     def unequip(self, key):
         if self.item.equipped_to:
             self.item.unequip()
         self.done()
+
 
 class MainMenuInterface(Interface, CascadeElement):
     def __init__(self):
@@ -60,8 +64,10 @@ class MainMenuInterface(Interface, CascadeElement):
     def update(self, mouse_pos):
         self.display()
 
+
 class StatusDisplay(CascadeElement):
     def __init__(self, worldinterface):
+        super().__init__()
         self.worldinterface = worldinterface
         self.gold_icon = SimpleSprite('icons/gold.png')
         self.gold_icon.rect.x, self.gold_icon.rect.y = 754, 92
@@ -124,7 +130,7 @@ class WorldInterface(Interface, CascadeElement):
             (K_ESCAPE, self.quit),
             ])
 
-    def on_return(self, defunct):
+    def on_return(self, defunct=None):
         if isinstance(defunct, GameInterface):
             self.pick()
         self.pc_list = [pc for pc in self.pc_list if pc.health > 0]
@@ -240,6 +246,7 @@ class WorldInterface(Interface, CascadeElement):
         self.previous_question = ''
         self.this_day_question += 1
         self.pick()
+
     def next_day(self):
         self.previous_question = ''
         self.this_day_question = 0

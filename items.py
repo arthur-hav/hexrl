@@ -1,6 +1,7 @@
 from display import SimpleSprite
 from abilities import StatusAbility, ABILITIES
 
+
 class Item(SimpleSprite):
     def __init__ (self, name, image_name, shop_price):
         super().__init__(image_name)
@@ -22,6 +23,7 @@ class Item(SimpleSprite):
         self.equipped_to.items.remove(self)
         self.equipped_to = None
 
+
 class StatsItem(Item):
     def __init__(self, name, image_name, shop_price, stat_impact):
         super().__init__(name, image_name, shop_price)
@@ -37,6 +39,7 @@ class StatsItem(Item):
     def on_unequip(self):
         for k, v in self.stat_impact.items():
             setattr(self.equipped_to, k, getattr(self.equipped_to, k) - v)
+
 
 class AbilityItem(Item):
     def __init__(self, name, image_name, shop_price, ability, ability_def):
@@ -54,8 +57,9 @@ class AbilityItem(Item):
     def on_unequip(self):
         self.equipped_to.abilities.pop(self.index)
 
+
 ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),
     'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown':200} )),
-    'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration':250, 'is_instant':True,}  ))
+    'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration':250, 'is_instant':True,}))
 }

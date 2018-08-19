@@ -11,6 +11,7 @@ class SideHealthGauge(Gauge):
         self.creature = creature
         self.displayed = False
         super().__init__(4, 32, '#BB0008')
+
     def update(self):
         self.height = math.ceil((16 * self.creature.health) / self.creature.maxhealth) * 2
         self.rect.x, self.rect.y = self.creature.tile.display_location()
@@ -19,23 +20,39 @@ class SideHealthGauge(Gauge):
         if self.creature.health == self.creature.maxhealth:
             self.set_height(0)
 
+
 class SideShieldGauge(Gauge):
     def __init__(self, creature):
         self.creature = creature
         self.displayed = False
         super().__init__(4, 32, '#BBCCFF')
+
     def update(self):
         self.height = math.ceil((16 * self.creature.shield) / self.creature.maxhealth) * 2
         self.rect.x, self.rect.y = self.creature.tile.display_location()
         self.rect.y += 32 - self.height
         self.set_height(self.height)
 
+
 class Creature(SimpleSprite, CascadeElement):
     def __init__ (self, defkey, is_pc=False):
         self.is_ranged = False
+        self.health = 0
+        self.damage = 0
         self.armor = 0
         self.magic_resist = 0
         self.passives = []
+        self.items = []
+        self.rooted = []
+        self.frames = []
+        self.is_pc = is_pc
+        self.defkey = defkey
+        self.health_gauge = SideHealthGauge(self)
+        self.shield_gauge = SideShieldGauge(self)
+        self.subsprites = [self.health_gauge, self.shield_gauge]
+        self.load_def(defkey)
+
+    def load_def(self, defkey):
         for k, v in DEFS[defkey].items():
             setattr(self, k, v)
         creature_passive_def = [k[1] for k in self.passives]
@@ -45,22 +62,13 @@ class Creature(SimpleSprite, CascadeElement):
         self.passives = [template[0](**c_def) for template, c_def in zip(self.passives, creature_passive_def)]
         for passive in self.passives:
             passive.apply_to(self)
-
         creature_ability_def = [k[1] for k in self.abilities]
         self.abilities = [ABILITIES[k[0]] for k in self.abilities]
         for c_def, ability_template in zip(creature_ability_def, self.abilities):
             c_def.update(ability_template[1])
         self.abilities = [template[0](**c_def) for template, c_def in zip(self.abilities, creature_ability_def)]
-        self.is_pc = is_pc
-        self.defkey = defkey
-        self.health_gauge = SideHealthGauge(self)
-        self.shield_gauge = SideShieldGauge(self)
         self.maxhealth = self.health
-        self.frames = []
-        SimpleSprite.__init__(self, DEFS[defkey]['image_name']) 
-        self.subsprites = [self.health_gauge, self.shield_gauge]
-        self.items = []
-        self.rooted = []
+        SimpleSprite.__init__(self, DEFS[defkey]['image_name'])
 
     def set_in_game(self, game, game_tile, next_action):
         self.tile = game_tile
@@ -109,7 +117,7 @@ class Creature(SimpleSprite, CascadeElement):
         c.is_pc = True
         return c
     
-    ### Below this : only valid if previously set_in_game
+    # Below this : only valid if previously set_in_game
 
     def tick(self, elapsed_time):
         for i, v in enumerate(self.ability_cooldown):
@@ -140,7 +148,7 @@ class Creature(SimpleSprite, CascadeElement):
         elif self.rooted:
             return
         elif destination in self.game.creatures:
-            #Swap places
+            # Swap places
             other_cr = self.game.creatures[destination]
             other_cr.tile = self.tile
             other_cr.rect.x, other_cr.rect.y = other_cr.tile.display_location()
@@ -195,39 +203,38 @@ class Creature(SimpleSprite, CascadeElement):
             del self.game.creatures[self.tile]
             self.game.subsprites.remove(self)
 
-
     def ai_play(self):
-        nearest_pc = min( [c for c in self.game.creatures.values() if c.is_pc], 
-                key= lambda x: x.tile.dist(self.tile))
-        #FLEEING
+        nearest_pc = min([c for c in self.game.creatures.values() if c.is_pc],
+                         key=lambda x: x.tile.dist(self.tile))
+        # FLEEING
         if self.is_ranged and self.tile.dist(nearest_pc.tile) < 1.25:
             tile = self.step_away(nearest_pc.tile)
             if tile and tile.in_boundaries() and not self.rooted:
                 self.move_or_attack(tile)
                 return
-        #CASTING
-        valid_targets = None
+        # CASTING
         if self.abilities:
             ability_num = random.randint(0, len(self.abilities) - 1)
             if self.ability_cooldown[ability_num] == 0:
                 valid_targets = self.game.get_valid_targets(self, self.abilities[ability_num])
-        if valid_targets:
-            target = random.choice(valid_targets)
-            self.use_ability(self.abilities[ability_num], target)
-            return
-        #HUNTING
+                if valid_targets:
+                    target = random.choice(valid_targets)
+                    self.use_ability(self.abilities[ability_num], target)
+                    return
+        # HUNTING
         if not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25:
             tile = self.step_to(nearest_pc.tile)
             # Only swap position with a lesser hp ally to avoid dancing
             if tile not in self.game.creatures or self.game.creatures[tile].is_pc != self.is_pc or self.game.creatures[tile].health < self.health:
                 self.move_or_attack(tile)
                 return
-        #IDLE
+        # IDLE
         self.idle()
 
     def display(self):
         CascadeElement.display(self)
         SimpleSprite.display(self)
+
 
 DEFS = {
     'Fighter': {

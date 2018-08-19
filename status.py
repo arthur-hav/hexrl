@@ -1,5 +1,6 @@
 from display import SimpleSprite
 
+
 class Status(SimpleSprite):
     def __init__(self, name, image_name):
         super().__init__(image_name)
@@ -15,6 +16,7 @@ class Status(SimpleSprite):
     def tick(self, creature, time):
         pass
 
+
 class Bloodlust(Status):
     def status_start(self, creature):
         creature.damage += 8
@@ -23,7 +25,8 @@ class Bloodlust(Status):
         creature.damage -= 8
 
     def get_description(self):
-        return "Gains %d damage." % creature.damage
+        return "Gains %d damage." % 8
+
 
 class Root(Status):
     def status_start(self, creature):

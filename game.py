@@ -36,7 +36,7 @@ class GameTile():
         self._x = self.x * self.CO
     
     def dist(self, other):
-        return sqrt((self._x-other._x)**2 + (self.y-other.y)**2)
+        return sqrt((self._x - other._x)**2 + (self.y - other.y)**2)
 
     def neighbours(self):
         return [ 
@@ -95,11 +95,10 @@ class GameTile():
                     for tile in current_tile.raycast(current_tile + current_tile - self, go_through):
                         yield tile
                 break
-        else:
-            yield current_tile
 
     def display_location(self):
-        return (340 + 32 * (8 + self.x), 92 + 32 * (7 + self.y))
+        return 340 + 32 * (8 + self.x), 92 + 32 * (7 + self.y)
+
 
 class HelpInterface(Interface, CascadeElement):
     def __init__(self, father):
@@ -118,21 +117,25 @@ Use special abilities with numpad [1-3], confirm target with mouse click or [Ent
     def cancel(self, key):
         self.done()
 
+
 class Tooltip(CascadeElement):
     def __init__(self):
+        super().__init__()
         self.basex, self.basey = 274, 220
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.move_ip(self.basex, self.basey)
         self.subsprites = [self.bg]
+
     def set_text(self, text):
         self.subsprites = [self.bg]
         for i, line in enumerate(text.split('\n')):
-            t = TextSprite(line, '#ffffff', maxlen = 350, x=self.basex + 20, y=self.basey + 20 + 50 * i)
+            t = TextSprite(line, '#ffffff', maxlen=350, x=self.basex + 20, y=self.basey + 20 + 50 * i)
             self.subsprites.append(t)
+
 
 class TargetInterface(Interface):
     def __init__(self, father, valid_targets, ability):
-        super().__init__(father, keys = [
+        super().__init__(father, keys=[
             (K_ESCAPE, self.cancel),
             (K_RETURN, self.confirm),
             (K_TAB, self.tab),
@@ -142,14 +145,17 @@ class TargetInterface(Interface):
         self.valid_targets = valid_targets
         self.ability = ability
         self.father.game.cursor.animate('icons/target-cursor.png')
+
     def cancel(self, key):
         self.target = None
         self.father.game.selected = None
         self.done()
+
     def tab(self, key):
         index = self.valid_targets.index(self.target)
         index = (index + 1) % len(self.valid_targets)
         self.target = self.valid_targets[index]
+
     def update(self, mouse_pos):
         self.father.game.update(mouse_pos)
         range_hint = self.father.game.get_range_hint(self.father.game.to_act, self.ability)
@@ -165,17 +171,21 @@ class TargetInterface(Interface):
             self.target = tile
         self.father.game.selected = self.target
         self.father.game.display()
+
     def on_click(self, mouse_pos):
         self.target = self.father.game.arena.get_tile_for_mouse(mouse_pos)
         if self.target and self.target in self.valid_targets:
             self.father.game.selected = None
             self.done()
+
     def confirm(self, mouse_pos):
         self.father.game.selected = None
         self.done()
 
+
 class InfoDisplay (CascadeElement):
     def __init__ (self, basex, basey):
+        super().__init__(self)
         self.portrait = SimpleSprite('portraits/Fighter.png')
         self.portrait.rect.x, self.portrait.rect.y = basex, basey
 
@@ -245,6 +255,7 @@ class InfoDisplay (CascadeElement):
         self.ability_display.update(creature, mouse_pos)
         self.passive_display.update(creature, mouse_pos)
 
+
 class AbilityDisplay (CascadeElement):
     def __init__ (self, basex, basey):
         super().__init__()
@@ -252,6 +263,7 @@ class AbilityDisplay (CascadeElement):
         self.basey = basey
         self.tooltip = Tooltip()
         self.text = TextSprite('Abilities', '#ffffff', basex, basey)
+
     def update(self, creature, mouse_pos):
         self.subsprites = [self.text]
         for i, ability in enumerate(creature.abilities):
@@ -270,11 +282,12 @@ class AbilityDisplay (CascadeElement):
                 if self.tooltip not in self.subsprites:
                     self.subsprites.append(self.tooltip)
             elif self.tooltip in self.subsprites:
-                self.subsprite.remove(self.tooltip)
+                self.subsprites.remove(self.tooltip)
             text_sprite = TextSprite(text, '#ffffff', self.basex + 70 + xoff, self.basey + 24 + yoff)
             self.subsprites.append(sprite)
             self.subsprites.append(key_hint)
             self.subsprites.append(text_sprite)
+
 
 class StatusEffectDisplay (CascadeElement):
     def __init__ (self, basex, basey):
@@ -283,10 +296,11 @@ class StatusEffectDisplay (CascadeElement):
         self.basey = basey
         self.text = TextSprite('Status effects', '#ffffff', self.basex, self.basey)
         self.tooltip = Tooltip()
+
     def update(self, creature, mouse_pos):
-        #if not creature.status:
-        #    self.subsprites = []
-        #    return
+        if not creature.status:
+            self.subsprites = []
+            return
         self.subsprites = [self.text]
         for i, status in enumerate(creature.status):
             xoff, yoff = 0, 32 * i
@@ -301,7 +315,8 @@ class StatusEffectDisplay (CascadeElement):
                 if self.tooltip not in self.subsprites:
                     self.subsprites.append(self.tooltip)
             elif self.tooltip in self.subsprites:
-                self.subsprite.remove(self.tooltip)
+                self.subsprites.remove(self.tooltip)
+
 
 class PassiveAbilitiesDisplay (CascadeElement):
     def __init__ (self, basex, basey):
@@ -310,6 +325,7 @@ class PassiveAbilitiesDisplay (CascadeElement):
         self.basey = basey
         self.text = TextSprite('Passive ability', '#ffffff', self.basex, self.basey)
         self.tooltip = Tooltip()
+
     def update(self, creature, mouse_pos):
         if not creature.passives:
             self.subsprites = []
@@ -328,10 +344,12 @@ class PassiveAbilitiesDisplay (CascadeElement):
                 if self.tooltip not in self.subsprites:
                     self.subsprites.append(self.tooltip)
             elif self.tooltip in self.subsprites:
-                self.subsprite.remove(self.tooltip)
+                self.subsprites.remove(self.tooltip)
+
 
 class LogDisplay (CascadeElement):
     def __init__ (self):
+        super().__init__(self)
         self.lines = ["", "", "", ""]
         self.line_sprites = [
                 TextSprite('', '#999999', 354, 16),
@@ -346,8 +364,10 @@ class LogDisplay (CascadeElement):
         for line, sprite in zip(self.lines[-4:], self.line_sprites):
             sprite.set_text(line)
 
+
 class DamageLogDisplay (CascadeElement):
-    def __init__ (self):
+    def __init__(self):
+        super().__init__(self)
         self.lines = [(None, None, 0)] * 5 
         self.number_sprites = [ TextSprite('', '#ffffff', 848, 138 + 32 * i) for i in range(5) ]
         self.author_sprites = [
@@ -371,6 +391,7 @@ class DamageLogDisplay (CascadeElement):
             self.mean_sprites[i].rect.x = self.basex + 32 
             self.mean_sprites[i].rect.y = self.basey + 32 * i
         self.subsprites = []
+
     def update(self):
         self.subsprites = []
         for i, line in enumerate(self.lines):
@@ -389,8 +410,10 @@ class DamageLogDisplay (CascadeElement):
         self.lines.append((image1, image2, number))
         self.lines.pop(0)
 
+
 class NextToActDisplay (CascadeElement):
-    def __init__ (self):
+    def __init__(self):
+        super().__init__(self)
         self.subsprites = []
         self.basex, self.basey = 904, 92
 
@@ -402,6 +425,7 @@ class NextToActDisplay (CascadeElement):
         for i in range(len(self.subsprites)):
             self.subsprites[i].rect.x = self.basex
             self.subsprites[i].rect.y = self.basey + 32 * i
+
 
 class StepHint(CascadeElement):
     def __init__(self):
@@ -428,8 +452,10 @@ class StepHint(CascadeElement):
             if disp:
                 sprite.display()
 
+
 class Arena(CascadeElement):
     def __init__(self):
+        super().__init__(self)
         self.board = {}
         self.step_hints = StepHint()
         for i in range(-8, 8):
@@ -443,8 +469,7 @@ class Arena(CascadeElement):
     def update(self, creature, mouse_pos):
         for sprite in self.board.values():
             sprite.animate('tiles/GreyTile.png')
-
-        #Highlight active player
+        # Highlight active player
         self.board[creature.tile].animate('tiles/Green2.png')
         self.step_hints.update(creature)
 
@@ -452,6 +477,7 @@ class Arena(CascadeElement):
         for tile, sprite in self.board.items():
             if sprite.rect.collidepoint(mouse_pos):
                 return tile
+
 
 class HoverXair(SimpleSprite):
     def __init__(self, *args, **kwargs):
@@ -467,8 +493,10 @@ class HoverXair(SimpleSprite):
     def update(self, tile):
         self.tile = tile
 
+
 class Game(CascadeElement):
     def __init__(self, pc_list, mob_list):
+        super().__init__(self)
         self.turn = 0
         self.arena = Arena()
         self.creatures = {}
@@ -482,7 +510,7 @@ class Game(CascadeElement):
         self.hover_xair.rect.x, self.hover_xair.rect.y = GameTile(0,0).display_location()
         self.selected_xair = HoverXair('icons/select.png')
         self.subsprites = [self.bg, self.arena, self.log_display, self.dmg_log_display, self.to_act_display, self.hover_xair, self.selected_xair, self.cursor]
-        #Will be set by new turn, only here declaring
+        # Will be set by new turn, only here declaring
         self.to_act = None
         self.selected = None
         self.spawn_creatures(pc_list, mob_list)
@@ -521,7 +549,7 @@ class Game(CascadeElement):
         elapsed_time = self.to_act.next_action - self.turn
         for creature in list(self.creatures.values()):
             creature.tick(elapsed_time)
-        #The creature to act got killed by a dot
+        # The creature to act got killed by a damage over time
         if min(self.creatures.values(), key= lambda x: x.next_action) != self.to_act:
             self.new_turn()
             return
@@ -546,7 +574,6 @@ class Game(CascadeElement):
                 self.subsprites.insert(7, self.hover_display)
         elif self.hover_display in self.subsprites:
             self.subsprites.remove(self.hover_display)
-        #self.dmg_log_display.update()
         for cr in self.creatures.values():
             cr.update()
         self.arena.update(self.to_act, mouse_pos)
@@ -571,16 +598,13 @@ class Game(CascadeElement):
 class GameInterface (Interface):
     def __init__ (self, father, mob_list):
         self.game = Game(father.pc_list, mob_list)
+        self.selected = None
         Interface.__init__(self, father, keys=[
             ('[1-3]', self.ability,),
             ('[4-9]', self.go),
             ('0', self.pass_turn),
             ('\?', self.disp_help),
             (K_ESCAPE, self.quit)])
-
-
-    def on_click(self, mouse_pos):
-        pass
 
     def go(self, code):
         index = int(code) - 4
@@ -615,7 +639,6 @@ class GameInterface (Interface):
         t.activate()
         self.desactivate()
 
-
     def on_click(self, mouse_pos):
         tile = self.game.arena.get_tile_for_mouse(mouse_pos)
         if self.game.selected and self.game.selected == tile:
@@ -632,7 +655,7 @@ class GameInterface (Interface):
         hi.activate()
         self.desactivate()
 
-    def on_return(self, defunct):
+    def on_return(self, defunct=None):
         if getattr(defunct, 'target', None):
             self.game.apply_ability(defunct.ability, self.game.to_act, defunct.target)
         self.game.cursor.animate('icons/magnifyingglass.png')

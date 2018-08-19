@@ -1,21 +1,23 @@
 import mock
 from game import *
 
-class FakeGame():
+
+class FakeGame:
     def __init__(self):
         self.creatures = {}
         self.dmg_log_display = mock.Mock()
 
-class TestGametile():
+
+class TestGametile:
     def setup(self):
         self.t1 = GameTile(2, 2)
         self.t2 = GameTile(3, 4.5)
+
     def test_tile_add(self):
         t = self.t1 + self.t2
 
         assert t.x == 5
         assert t.y == 6.5
-
 
     def test_tile_sub(self):
         t = self.t2 - self.t1
@@ -47,7 +49,7 @@ class TestGametile():
         assert len(ray) == 3
 
 
-class TestCreature():
+class TestCreature:
     def test_init(self):
         c = Creature('Archer')
         assert c.health == 80

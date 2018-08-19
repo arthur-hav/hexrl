@@ -4,10 +4,12 @@ import items
 from pygame.locals import *
 from display import Interface, SimpleSprite, TextSprite, CascadeElement
 
+
 def get_question(key):
     if key in NORMAL_CHOICES:
         return NORMAL_CHOICES[key]
     return SPECIAL_CHOICES[key]
+
 
 def exp_reward():
     i = 350
@@ -15,11 +17,13 @@ def exp_reward():
         i += 350
     return random.randint(i, i + 350)
 
+
 def exp_discount():
     i = 1100
     while random.random() > 0.5:
         i = int(i * 0.85)
     return random.randint(int(i*0.85), i)
+
 
 class Choice():
     def __init__(self, world_interface):
@@ -62,6 +66,7 @@ class RestChoice(Choice):
             cr.health = min(cr.health, cr.maxhealth)
         self.world_interface.next_day()
 
+
 class GameOver(Choice):
     REWARD = 30
     def get_text(self):
@@ -72,10 +77,13 @@ class GameOver(Choice):
         os.unlink('save.json')
         self.world_interface.done()
 
+
 class FightChoice(Choice):
     REWARD = 30
+
     def roll(self):
         self.rolls = [random.randint(2,7), random.randint(0,5)]
+
     def _init(self):
         self.mobs = [ ('Skeleton', (i, -4 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1) ]
         self.mobs += [ ('SkeletonArcher', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ] 
@@ -85,8 +93,10 @@ class FightChoice(Choice):
 
     def get_choices(self):
         return ['Fight']
+
     def choice_one(self):
         return self.world_interface.start_game(self.mobs)
+
 
 class OldManChoice(Choice):
     def roll(self):
@@ -97,6 +107,7 @@ class OldManChoice(Choice):
 
     def get_choices(self):
         return ['Yes', 'No']
+
     def choice_one(self):
         if self.rolls[0]:
             self.world_interface.current_question = get_question('necromancer')(self.world_interface)
@@ -109,8 +120,10 @@ class OldManChoice(Choice):
         self.world_interface.next_question()
 
 class NecromancerChoice(Choice):
+
     def roll(self):
         self.rolls = [random.randint(2,7), random.randint(0,5)]
+
     def _init(self):
         self.mobs = [ ('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[1] // 2 + 1, self.rolls[1] // 2 + 1) ]
         self.mobs.append(('Necromancer', (0, -6)))
@@ -120,15 +133,19 @@ class NecromancerChoice(Choice):
 
     def get_choices(self):
         return ['Fight']
+
     def choice_one(self):
         return self.world_interface.start_game(self.mobs)
 
+
 class GoodOldManChoice(Choice):
+
     def roll(self):
         self.rolls = [random.choice( list(items.ITEMS.keys()))]
 
     def get_text(self):
-        return 'As you greet him, the old man tells you he is lost and leaves in a nearby village. You accompany him to safety. He thanks you warmly and offer you an item to show you his gratitude.'
+        return 'As you greet him, the old man tells you he is lost and leaves in a nearby village. ' \
+               'You accompany him to safety. He thanks you warmly and offer you an item to show you his gratitude.'
 
     def get_choices(self):
         return ['OK']
@@ -140,8 +157,10 @@ class GoodOldManChoice(Choice):
         self.world_interface.inventory.append(item)
         self.world_interface.next_question()
 
+
 class DemonChoice(Choice):
     REWARD = 30
+
     def _init(self):
         self.mobs = [('Demon', (0, -6))]
 
@@ -150,12 +169,14 @@ class DemonChoice(Choice):
 
     def get_choices(self):
         return ['Fight']
+
     def choice_one(self):
         return self.world_interface.start_game(self.mobs)
 
 
 class TollChoice(Choice):
     REWARD = 20
+
     def roll(self):
         self.rolls = [exp_reward(), random.randint(3,5)]
 
@@ -181,8 +202,10 @@ class TollChoice(Choice):
         self.world_interface.next_question()
 
 class ShopChoice(Choice):
+
     def roll(self):
         self.rolls = [ random.choice( list(items.ITEMS.keys()) ) for _ in range(3)] + [exp_discount() for _ in range(3)]
+
     def _init(self, first=True):
         self.items = []
         self.prices = []
@@ -231,9 +254,12 @@ class ShopChoice(Choice):
     def choice_four(self):
         self.world_interface.next_question()
 
+
 class LootChoice(Choice):
+
     def roll(self):
         self.rolls = [exp_reward()]
+
     def _init (self):
         self.gold = get_question(self.world_interface.previous_question).REWARD * self.rolls[0] // 1000
 
@@ -247,14 +273,17 @@ class LootChoice(Choice):
         self.world_interface.party_gold += self.gold
         self.world_interface.next_question()
 
+
 class NothingChoice(Choice):
     TEXTS = [
-            "The sun softly warms your skin as you keep walking. You pass beneath a beautiful tree. You feel at ease.",
-            "As the mist thickens you mark a pause on your journey to avoid dangerous ambushes, but nothing bad happens.",
-            "During your walk, adventurers argue about possible meanings of life.",
+        "The sun softly warms your skin as you keep walking. You pass beneath a beautiful tree. You feel at ease.",
+        "As the mist thickens you mark a pause on your journey to avoid dangerous ambushes, but nothing bad happens.",
+        "During your walk, adventurers argue about possible meanings of life.",
     ]
+
     def roll(self):
         self.rolls = [random.choice(NothingChoice.TEXTS)]
+
     def _init (self):
         pass
 
@@ -266,6 +295,7 @@ class NothingChoice(Choice):
 
     def choice_one(self):
         self.world_interface.next_question()
+
 
 class TavernModal(Interface, CascadeElement):
     def __init__(self, father, tavern):
@@ -282,6 +312,7 @@ class TavernModal(Interface, CascadeElement):
             (K_BACKSPACE, self.erase),
             (K_RETURN, self.validate),
             ])
+
     def typing(self, code):
         self.word += code
         self.question.set_text(self.word)
@@ -297,6 +328,7 @@ class TavernModal(Interface, CascadeElement):
     def update(self, mouse_pos):
         self.display()
 
+
 class TavernChoice(Choice):
     ANSWERS = { 
             'name': 'My name is Barnabas',
@@ -304,9 +336,11 @@ class TavernChoice(Choice):
             'old man': 'Take care, some are not what they seem to be.',
             'gobelins': 'Such a plague they are, damn right',
     }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text = "You enter a small tavern where you can gather information. You sit at the bar. The barman looks friendly and waits for you to order a drink."
+
     def inquiry(self, word):
         self.text = self.ANSWERS.get(word, 'eh ?')
         self.world_interface.display_choices()
@@ -324,6 +358,7 @@ class TavernChoice(Choice):
     def choice_two(self):
         self.world_interface.next_question()
 
+
 class StartChoice(Choice):
     def roll(self):
         self.rolls = [exp_reward()]
@@ -338,20 +373,21 @@ class StartChoice(Choice):
         self.world_interface.party_gold += self.rolls[0] // 10
         self.world_interface.next_question()
 
+
 NORMAL_CHOICES = {
     'gobelin_squad': TollChoice,
     'undead': FightChoice,
     'demon': DemonChoice,
-    'nothing':NothingChoice,
+    'nothing': NothingChoice,
     'oldman': OldManChoice,
     'shop': ShopChoice,
     'tavern': TavernChoice
 }
 SPECIAL_CHOICES = {
-    'rest':RestChoice,
+    'rest': RestChoice,
     'necromancer': NecromancerChoice,
     'goodoldman': GoodOldManChoice,
-    'start':StartChoice,
-    'gameover':GameOver,
-    'loot':LootChoice,
+    'start': StartChoice,
+    'gameover': GameOver,
+    'loot': LootChoice,
 }

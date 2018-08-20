@@ -338,7 +338,7 @@ class TavernModal(Interface, CascadeElement):
             ])
 
     def typing(self, code):
-        self.word += code7
+        self.word += code
         self.question.set_text(self.word)
     
     def erase(self, _):

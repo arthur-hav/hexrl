@@ -37,14 +37,21 @@ class Creature(SimpleSprite, CascadeElement):
         CascadeElement.__init__(self)
         self.is_ranged = False
         self.health = 0
+        self.maxhealth = 0
         self.damage = 0
         self.armor = 0
         self.magic_resist = 0
         self.passives = []
+        self.status = []
+        self.abilities = []
         self.items = []
         self.rooted = []
         self.silenced = []
         self.frames = []
+        self.tile = None
+        self.game = None
+        self.next_action = 0
+        self.shield = 0
         self.is_pc = is_pc
         self.defkey = defkey
         self.health_gauge = SideHealthGauge(self)
@@ -162,7 +169,7 @@ class Creature(SimpleSprite, CascadeElement):
     def attack(self, destination):
         creature = self.game.creatures[destination]
         creature.take_damage(self.damage)
-        self.game.dmg_log_display.push_line(self.image_name, 'icons/sword.png', self.damage)
+        # self.game.dmg_log_display.push_line(self.image_name, 'icons/sword.png', self.damage)
         self.end_act()
 
     def use_ability(self, ability, target):
@@ -198,9 +205,9 @@ class Creature(SimpleSprite, CascadeElement):
                 status.status_end(self)
             self.status = []
             self.passives = []
-            self.game.log_display.push_text("%s dies." % (self.name))
+            # self.game.log_display.push_text("%s dies." % (self.name))
             del self.game.creatures[self.tile]
-            self.game.subsprites.remove(self)
+            self.must_show = False
 
     def ai_play(self):
         nearest_pc = min([c for c in self.game.creatures.values() if c.is_pc],
@@ -360,9 +367,8 @@ DEFS = {
     'Banshee': {
         'portrait': 'portraits/Necromancer.png',
         'image_name': 'tiles/banshee.png',
-        'health': 50,
+        'health': 80,
         'damage': 10,
-        'armor': 10,
         'name': 'Banshee',
         'abilities': [('Scream', {'ability_range': 2, 'damagefactor': 1, 'cooldown': 200, 'duration':300 })],
     },

@@ -1,6 +1,25 @@
 from display import *
 from math import ceil
 from pygame.locals import *
+from gametile import GameTile
+
+
+class Arena(CascadeElement):
+    def __init__(self):
+        super().__init__(self)
+        self.board = {}
+        self.step_hints = StepHint()
+        for tile in GameTile.all_tiles():
+            self.board[tile] = SimpleSprite('tiles/GreyTile.png')
+            self.board[tile].rect.move_ip(*tile.display_location())
+        self.subsprites = list(self.board.values()) + [self.step_hints]
+
+    def update(self, creature):
+        for sprite in self.board.values():
+            sprite.animate('tiles/GreyTile.png')
+        # Highlight active player
+        self.board[creature.tile].animate('tiles/Green2.png')
+        self.step_hints.update(creature)
 
 
 class InfoDisplay (CascadeElement):
@@ -275,7 +294,7 @@ class HoverXair(SimpleSprite):
         self.tile = None
 
     def display(self):
-        if not self.tile:
+        if not self.tile or not self.tile.in_boundaries():
             return
         self.rect.x, self.rect.y = self.tile.display_location()
         super().display()
@@ -328,7 +347,7 @@ class TargetInterface(Interface):
             and self.father.game.selected in valid_targets else valid_targets[0]
         self.valid_targets = valid_targets
         self.ability = ability
-        self.father.game.cursor.animate('icons/target-cursor.png')
+        self.father.game_ui.cursor.animate('icons/target-cursor.png')
 
     def cancel(self, key):
         self.target = None
@@ -341,23 +360,23 @@ class TargetInterface(Interface):
         self.target = self.valid_targets[index]
 
     def update(self, mouse_pos):
-        self.father.game.update(mouse_pos)
+        self.father.game_ui.update(self.father.game, mouse_pos)
         range_hint = self.father.game.get_range_hint(self.father.game.to_act, self.ability)
         for target in range_hint:
-            self.father.game.arena.board[target].animate('tiles/GreyTile2.png')
+            self.father.game_ui.arena.board[target].animate('tiles/GreyTile2.png')
         range_hint = self.father.game.get_splash_hint(self.father.game.to_act, self.ability, self.target)
         for target in range_hint:
-            self.father.game.arena.board[target].animate('tiles/Yellow2.png')
+            self.father.game_ui.arena.board[target].animate('tiles/Yellow2.png')
         for target in self.valid_targets:
-            self.father.game.arena.board[target].animate('tiles/Yellow.png')
-        tile = self.father.game.arena.get_tile_for_mouse(mouse_pos)
+            self.father.game_ui.arena.board[target].animate('tiles/Yellow.png')
+        tile = GameTile.get_tile_for_mouse(mouse_pos)
         if tile and tile in self.valid_targets:
             self.target = tile
         self.father.game.selected = self.target
-        self.father.game.display()
+        self.father.game_ui.display()
 
     def on_click(self, mouse_pos):
-        self.target = self.father.game.arena.get_tile_for_mouse(mouse_pos)
+        self.target = GameTile.get_tile_for_mouse(mouse_pos)
         if self.target and self.target in self.valid_targets:
             self.father.game.selected = None
             self.done()

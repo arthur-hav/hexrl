@@ -1,11 +1,11 @@
 import mock
 from game import *
+from gametile import GameTile
 
 
 class FakeGame:
     def __init__(self):
         self.creatures = {}
-        self.dmg_log_display = mock.Mock()
 
 
 class TestGametile:
@@ -39,6 +39,13 @@ class TestGametile:
 
         assert self.t1 == t1_bis
         assert self.t2 != t1_bis
+
+    def test_mouse_location(self):
+        xt1, yt1 = self.t1.display_location()
+
+        assert GameTile.get_tile_for_mouse((xt1, yt1)) == self.t1
+        assert GameTile.get_tile_for_mouse((xt1 + 20, yt1 + 20)) == self.t1
+
 
     def test_raycast(self):
         ray = list(self.t1.raycast(self.t2))

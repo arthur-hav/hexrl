@@ -14,7 +14,7 @@ class EquipInterface(Interface, CascadeElement):
         self.item = item
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.x, self.bg.rect.y = 262, 200
-        self.text = TextSprite('Equip adventurer with [1-5]. Unequip with [0]. [Esc] to cancel.', '#ffffff', 274, 250)
+        self.text = TextSprite('Equip adventurer with [1-5]. Unequip with [0]. [Esc] to cancel.', '#ffffff', 274, 250, maxlen=350)
         self.stats = TextSprite(str(item), '#ffffff', 274, 220, maxlen=350)
         self.subsprites = [self.bg, self.stats, self.text]
         Interface.__init__(self, father, keys = [
@@ -24,15 +24,20 @@ class EquipInterface(Interface, CascadeElement):
             ])
 
     def equip(self, teamnum):
-        if teamnum > len(self.father.pc_list):
+        if int(teamnum) >= len(self.father.pc_list):
             return
-        self.item.equip(self.father.pc_list[int(teamnum)])
+        self.item.equip(self.father.pc_list[int(teamnum) - 1])
         self.done()
 
     def unequip(self, key):
         if self.item.equipped_to:
             self.item.unequip()
         self.done()
+
+    def update(self, pos):
+        self.father.update(pos)
+        super().update(pos)
+        self.display()
 
 
 class MainMenuInterface(Interface, CascadeElement):

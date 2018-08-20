@@ -47,6 +47,7 @@ class AbilityItem(Item):
         self.ability = ABILITIES[ability]
         self.ability_def = self.ability[1].copy()
         self.ability_def.update(ability_def)
+
     def __str__(self):
         return 'This item gives the ability %s' % self.ability_def['name']
 

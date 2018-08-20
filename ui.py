@@ -264,28 +264,22 @@ class StepHint(CascadeElement):
     def __init__(self):
         super().__init__()
         self.subsprites = [TextSprite('[%d]' % (i + 4), '#00FF00', 0, 0) for i in range(6)]
-        self.must_display = [False] * 6
         for text in self.subsprites:
             for sprite in text.textsprites:
                 sprite.image.set_alpha(120)
 
     def update(self, creature):
         if not creature.is_pc:
-            self.must_display = [False] * 6
+            self.must_show = False
             return
+        self.must_show = True
         for i, neighbour in enumerate(creature.tile.neighbours()):
-            if not neighbour.in_boundaries():
-                self.must_display[i] = False
+            if not neighbour.in_boundaries() or neighbour in creature.game.creatures:
+                self.subsprites[i].must_show = False
                 continue
-            self.subsprites[i].textsprites[0].rect.x, self.subsprites[i].textsprites[0].rect.y = neighbour.display_location()
-            self.must_display[i] = True
-
-    def display(self):
-        for sprite, disp in zip(self.subsprites, self.must_display):
-            if disp:
-                sprite.display()
-
-
+            x, y = neighbour.display_location()
+            self.subsprites[i].textsprites[0].rect.x, self.subsprites[i].textsprites[0].rect.y = x + 4, y + 6
+            self.subsprites[i].must_show = True
 
 
 class HoverXair(SimpleSprite):
@@ -301,6 +295,7 @@ class HoverXair(SimpleSprite):
 
     def update(self, tile):
         self.tile = tile
+
 
 class HelpInterface(Interface, CascadeElement):
     def __init__(self, father):
@@ -340,49 +335,71 @@ class TargetInterface(Interface):
     def __init__(self, father, valid_targets, ability):
         super().__init__(father, keys=[
             (K_ESCAPE, self.cancel),
-            (K_RETURN, self.confirm),
-            (K_TAB, self.tab),
+            ('[0-9]', self.choose),
             ])
         self.target = self.father.game.selected if self.father.game.selected \
             and self.father.game.selected in valid_targets else valid_targets[0]
         self.valid_targets = valid_targets
         self.ability = ability
         self.father.game_ui.cursor.animate('icons/target-cursor.png')
+        self.father.game_ui.arena.step_hints.must_show = False
+        self.updates = 0
 
     def cancel(self, key):
         self.target = None
         self.father.game.selected = None
         self.done()
 
-    def tab(self, key):
-        index = self.valid_targets.index(self.target)
-        index = (index + 1) % len(self.valid_targets)
-        self.target = self.valid_targets[index]
+    def choose(self, key):
+        if int(key) > len(self.valid_targets):
+            return
+        if int(key) == 0 and len(self.valid_targets) > 9:
+            self.valid_targets = self.valid_targets[9:] + self.valid_targets[:9]
+            return
+        self.target = self.valid_targets[int(key) - 1]
+        if self.updates > 3:
+            self.confirm()
 
     def update(self, mouse_pos):
+        self.updates += 1
         self.father.game_ui.update(self.father.game, mouse_pos)
         range_hint = self.father.game.get_range_hint(self.father.game.to_act, self.ability)
         for target in range_hint:
             self.father.game_ui.arena.board[target].animate('tiles/GreyTile2.png')
-        range_hint = self.father.game.get_splash_hint(self.father.game.to_act, self.ability, self.target)
-        for target in range_hint:
+        splash_hint = self.father.game.get_splash_hint(self.father.game.to_act, self.ability, self.target)
+        for target in splash_hint:
             self.father.game_ui.arena.board[target].animate('tiles/Yellow2.png')
-        for target in self.valid_targets:
-            self.father.game_ui.arena.board[target].animate('tiles/Yellow.png')
+        targets_hint = []
+        backgrounds = []
+        for i, target in enumerate(self.valid_targets):
+            key = i + 1 if i < 9 else 0
+            x, y = target.display_location()
+            t = TextSprite('[%d]' % key, '#ffff00', x=x + 4, y=y + 6)
+            background = Gauge(32, 32, '#000000')
+            background.move_to(x, y)
+            background.image.set_alpha(50)
+            backgrounds.append(background)
+            targets_hint.append(t)
         tile = GameTile.get_tile_for_mouse(mouse_pos)
         if tile and tile in self.valid_targets:
             self.target = tile
-        self.father.game.selected = self.target
         self.father.game_ui.display()
+        for t in backgrounds:
+            t.display()
+        for t in targets_hint:
+            t.display()
+        self.father.game_ui.cursor.display()
 
     def on_click(self, mouse_pos):
         self.target = GameTile.get_tile_for_mouse(mouse_pos)
         if self.target and self.target in self.valid_targets:
             self.father.game.selected = None
+            self.father.game_ui.arena.step_hints.must_show = True
             self.done()
 
-    def confirm(self, mouse_pos):
+    def confirm(self):
         self.father.game.selected = None
+        self.father.game_ui.arena.step_hints.must_show = True
         self.done()
 
 

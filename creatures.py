@@ -1,7 +1,7 @@
 from display import SimpleSprite, CascadeElement, Gauge
 from abilities import ABILITIES
 from passives import PASSIVES
-import os
+from items import ITEMS
 import random
 import math
 
@@ -103,7 +103,9 @@ class Creature(SimpleSprite, CascadeElement):
             item.unequip()
         d = {
             'items': [item.name for item in items],
-            'health':self.health, 
+            'health':self.health,
+            'maxhealth':self.maxhealth,
+            'damage':self.damage,
             'defkey':self.defkey
             }
         for item in items:
@@ -114,11 +116,15 @@ class Creature(SimpleSprite, CascadeElement):
     def dict_load(data, items):
         c = Creature(data['defkey'])
         c.health = data['health']
+        if 'damage' in data:
+            c.damage = data['damage']
+        if 'maxhealth' in data:
+            c.maxhealth = data['maxhealth']
         for key in data['items']:
-            for item in items:
-                if item.name == key and not item.equipped_to:
-                    item.equip(c)
-                    break
+            item_class = ITEMS[key][0]
+            item_args = ITEMS[key][1]
+            item = item_class(*item_args)
+            item.equip(c)
         c.is_pc = True
         return c
     

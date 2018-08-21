@@ -70,6 +70,7 @@ class AbilityItem(Item):
     def on_unequip(self):
         self.equipped_to.abilities.pop(self.index)
 
+
 class HealthPotion(Consumable):
     def __str__(self):
         return 'This item gives back full health on use'
@@ -77,9 +78,29 @@ class HealthPotion(Consumable):
     def equip(self, creature):
         creature.health = creature.maxhealth
 
+
+class DamageElixir(Consumable):
+    def __str__(self):
+        return 'This item permanently increases damage'
+
+    def equip(self, creature):
+        creature.damage += 1
+
+
+class HealthElixir(Consumable):
+    def __str__(self):
+        return 'This item permanently increases max health'
+
+    def equip(self, creature):
+        creature.maxhealth += 10
+        creature.health += 10
+
+
 ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),
     'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown': 200} )),
     'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration': 250, 'is_instant': True,})),
-    'HealthPotion': (HealthPotion, ('HealthPotion', 'tiles/potion.png', 15))
+    'Health potion': (HealthPotion, ('Health potion', 'tiles/potion.png', 15)),
+    'Elixir of might': (DamageElixir, ('Elixir of might', 'tiles/potion.png', 120)),
+    'Elixir of endurance': (HealthElixir, ('Elixir of endurance', 'tiles/potion.png', 100)),
 }

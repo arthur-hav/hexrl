@@ -165,7 +165,7 @@ class GoodOldManChoice(Choice):
 class BansheeChoice(Choice):
 
     def roll(self):
-        self.rolls = [random.randint(5, 7)]
+        self.rolls = [random.randint(3, 5)]
 
     def _init(self):
         self.mobs = [('Banshee', (i, -5 + 0.5 * (i % 2))) for i in range(-self.rolls[0] // 2 + 1, self.rolls[0] // 2 + 1)]

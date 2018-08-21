@@ -238,7 +238,8 @@ class Creature(SimpleSprite, CascadeElement):
         self.idle()
 
     def display(self):
-        CascadeElement.display(self)
+        if self.combat:
+            CascadeElement.display(self)
         SimpleSprite.display(self)
 
 

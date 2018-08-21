@@ -33,6 +33,7 @@ class Consumable(SimpleSprite):
         self.image_name = image_name
         self.shop_price = shop_price
         self.consumable = True
+        self.equipped_to = None
 
 
 class StatsItem(Item):
@@ -80,5 +81,5 @@ ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),
     'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown': 200} )),
     'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration': 250, 'is_instant': True,})),
-    'HealthPotion': (HealthPotion, ('HealthPotion', 'tiles/potion.png', 10))
+    'HealthPotion': (HealthPotion, ('HealthPotion', 'tiles/potion.png', 15))
 }

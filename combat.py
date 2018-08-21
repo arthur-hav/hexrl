@@ -29,7 +29,6 @@ class Combat(CascadeElement):
     def new_turn(self):
         if self.is_over():
             return
-        self.selected = None
         to_act = min(self.creatures.values(), key=lambda x: x.next_action)
         if to_act == self.to_act:
             return
@@ -143,6 +142,9 @@ class CombatInterface (Interface):
             self.done()
 
     def update(self, mouse_pos):
+        if self.combat.is_over():
+            self.done()
+            return
         if not self.combat.to_act.is_pc and self.combat_ui.game_frame == 5:
             self.combat.to_act.ai_play()
         elif self.combat.to_act.is_pc:

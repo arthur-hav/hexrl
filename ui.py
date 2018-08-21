@@ -452,10 +452,10 @@ class GameUI(CascadeElement):
         tile = GameTile.get_tile_for_mouse(mouse_pos)
         self.hover_xair.update(tile)
         self.selected_xair.update(combat.selected)
-        creature = combat.creatures.get(tile, combat.creatures.get(combat.selected, combat.to_act))
         for creature in combat.creatures.values():
             if creature not in self.subsprites:
                 self.subsprites.insert(3, creature)
+        creature = combat.creatures.get(tile, combat.creatures.get(combat.selected, combat.to_act))
         if creature:
             self.hover_display.update(creature, mouse_pos)
             self.hover_display.must_show = True

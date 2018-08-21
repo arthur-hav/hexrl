@@ -33,7 +33,7 @@ class EquipInterface(Interface, CascadeElement):
     def unequip(self, key):
         if self.item.equipped_to:
             self.item.unequip()
-        self.done()
+            self.done()
 
     def update(self, pos):
         self.father.update(pos)
@@ -108,6 +108,8 @@ class StatusDisplay(CascadeElement):
         for i, item in enumerate(self.worldinterface.inventory):
             if item.equipped_to:
                 self.inventory[i].animate('tiles/Green2.png')
+            else:
+                self.inventory[i].animate('icons/icon-blank.png')
             item.rect.x, item.rect.y = self.inventory[i].rect.x, self.inventory[i].rect.y
             self.subsprites.append(item)
 

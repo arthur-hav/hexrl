@@ -306,9 +306,9 @@ class HelpInterface(Interface, CascadeElement):
         t = Tooltip()
         t.set_text("""The combat mostly plays with numpad. 
 Use [4-9] to move or attack adjacent tile.
-Use special abilities with numpad [1-3], confirm target with mouse click or [Enter].
-[0] to idle for half a turn.
-[Esc] to cancel or quit.""")
+Use special abilities with numpad [1-3], confirm target with mouse click or [1-9].
+Press [0] to idle for half a turn.
+Press [Esc] to cancel or quit.""")
         self.subsprites = [t]
         self.display()
 

@@ -1,5 +1,6 @@
-from game import GameTile, GameInterface, Creature
-from display import Display, Interface, TextSprite, SimpleSprite, CascadeElement, DISPLAY
+from combat import CombatInterface
+from display import Interface, TextSprite, SimpleSprite, CascadeElement
+from creatures import Creature
 from pygame.locals import *
 import choices
 import random
@@ -133,13 +134,14 @@ class WorldInterface(Interface, CascadeElement):
         self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
         self.choice_text = [TextSprite('', '#ffffff', 320, 400 + 16 * i) for i in range(4)] 
         self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text + [self.cursor]
+        self.formation = [ (-2, 4), (-1, 4.5), (0, 4), (1, 4.5), (2, 4), ]
         Interface.__init__(self, father, keys = [
             ('[1-4]', self.choose),
             (K_ESCAPE, self.quit),
             ])
 
     def on_return(self, defunct=None):
-        if isinstance(defunct, GameInterface):
+        if isinstance(defunct, CombatInterface):
             self.pick()
         self.pc_list = [pc for pc in self.pc_list if pc.health > 0]
 
@@ -203,8 +205,8 @@ class WorldInterface(Interface, CascadeElement):
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos
         self.display()
 
-    def start_game(self, mobs):
-        gi = GameInterface(self, mobs)
+    def start_combat(self, mobs):
+        gi = CombatInterface(self, mobs)
         gi.activate()
         self.desactivate()
 

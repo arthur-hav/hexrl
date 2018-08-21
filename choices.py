@@ -98,7 +98,7 @@ class FightChoice(Choice):
         return ['Fight']
 
     def choice_one(self):
-        return self.world_interface.start_game(self.mobs)
+        return self.world_interface.start_combat(self.mobs)
 
 
 class OldManChoice(Choice):
@@ -140,7 +140,7 @@ class NecromancerChoice(Choice):
         return ['Fight']
 
     def choice_one(self):
-        return self.world_interface.start_game(self.mobs)
+        return self.world_interface.start_combat(self.mobs)
 
 
 class GoodOldManChoice(Choice):
@@ -179,7 +179,7 @@ class BansheeChoice(Choice):
         return ['Fight']
 
     def choice_one(self):
-        return self.world_interface.start_game(self.mobs)
+        return self.world_interface.start_combat(self.mobs)
 
 class DemonChoice(Choice):
     REWARD = 30
@@ -194,7 +194,7 @@ class DemonChoice(Choice):
         return ['Fight']
 
     def choice_one(self):
-        return self.world_interface.start_game(self.mobs)
+        return self.world_interface.start_combat(self.mobs)
 
 
 class TollChoice(Choice):
@@ -217,7 +217,7 @@ class TollChoice(Choice):
         return ['Fight', 'Pay the toll']
 
     def choice_one(self):
-        return self.world_interface.start_game(self.mobs)
+        return self.world_interface.start_combat(self.mobs)
 
     def choice_two(self):
         self.world_interface.pay(self.toll)
@@ -378,6 +378,7 @@ class TavernChoice(Choice):
 
     def choice_one(self):
         t = TavernModal(self.world_interface, self)
+        self.world_interface.desactivate()
         t.activate()
 
     def choice_two(self):

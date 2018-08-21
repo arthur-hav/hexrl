@@ -19,12 +19,12 @@ class RegenerationPassive(Passive):
                 creature.health += round(elapsed_time / 100 * self.rate)
         creature.tick = new_tick
 
-        old_end_game = creature.end_game
+        old_end_game = creature.end_combat
 
         def new_end_game():
             old_end_game()
             creature.health = max(creature.health, self.maxhealth or creature.maxhealth)
-        creature.end_game = new_end_game
+        creature.end_combat = new_end_game
 
     def get_short_desc(self):
         t = 'Regen +%d' % self.rate

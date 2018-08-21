@@ -49,7 +49,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.silenced = []
         self.frames = []
         self.tile = None
-        self.game = None
+        self.combat = None
         self.next_action = 0
         self.shield = 0
         self.is_pc = is_pc
@@ -77,17 +77,17 @@ class Creature(SimpleSprite, CascadeElement):
         SimpleSprite.__init__(self, DEFS[defkey]['image_name'])
         self.subsprites = [self.health_gauge, self.shield_gauge]
 
-    def set_in_game(self, game, game_tile, next_action):
+    def set_in_combat(self, combat, game_tile, next_action):
         self.tile = game_tile
         self.rect.x, self.rect.y = self.tile.display_location()
-        self.game = game
-        self.game.creatures[game_tile] = self
+        self.combat = combat
+        self.combat.creatures[game_tile] = self
         self.next_action = next_action
         self.shield = 0
         self.status = []
 
-    def end_game(self):
-        self.game = None
+    def end_combat(self):
+        self.combat = None
         self.tile = None
 
     def update(self):
@@ -122,7 +122,7 @@ class Creature(SimpleSprite, CascadeElement):
         c.is_pc = True
         return c
     
-    # Below this : only valid if previously set_in_game
+    # Below this : only valid if previously set_in_combat
 
     def tick(self, elapsed_time):
         for ability in self.abilities:
@@ -135,29 +135,29 @@ class Creature(SimpleSprite, CascadeElement):
 
     def step_away(self, target):
         try:
-            return max([t for t in self.tile.neighbours() if t not in self.game.creatures], key = lambda x: x.dist(target))
+            return max([t for t in self.tile.neighbours() if t not in self.combat.creatures], key = lambda x: x.dist(target))
         except ValueError:
             return None
 
     def move_or_attack(self, destination):
         if not destination.in_boundaries():
             return
-        if destination in self.game.creatures and self.is_pc != self.game.creatures[destination].is_pc:
+        if destination in self.combat.creatures and self.is_pc != self.combat.creatures[destination].is_pc:
             return self.attack(destination)
         elif self.rooted:
             return
-        elif destination in self.game.creatures:
+        elif destination in self.combat.creatures:
             # Swap places
-            other_cr = self.game.creatures[destination]
+            other_cr = self.combat.creatures[destination]
             other_cr.tile = self.tile
             other_cr.rect.x, other_cr.rect.y = other_cr.tile.display_location()
-            other_cr.game.creatures[self.tile] = other_cr
-            del self.game.creatures[destination]
+            other_cr.combat.creatures[self.tile] = other_cr
+            del self.combat.creatures[destination]
         else:
-            del self.game.creatures[self.tile]
+            del self.combat.creatures[self.tile]
         self.tile = destination
         self.rect.x, self.rect.y = self.tile.display_location()
-        self.game.creatures[destination] = self
+        self.combat.creatures[destination] = self
         self.end_act()
 
     def idle(self):
@@ -167,7 +167,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.next_action += 100
 
     def attack(self, destination):
-        creature = self.game.creatures[destination]
+        creature = self.combat.creatures[destination]
         creature.take_damage(self.damage)
         # self.game.dmg_log_display.push_line(self.image_name, 'icons/sword.png', self.damage)
         self.end_act()
@@ -206,11 +206,11 @@ class Creature(SimpleSprite, CascadeElement):
             self.status = []
             self.passives = []
             # self.game.log_display.push_text("%s dies." % (self.name))
-            del self.game.creatures[self.tile]
+            del self.combat.creatures[self.tile]
             self.must_show = False
 
     def ai_play(self):
-        nearest_pc = min([c for c in self.game.creatures.values() if c.is_pc],
+        nearest_pc = min([c for c in self.combat.creatures.values() if c.is_pc],
                          key=lambda x: x.tile.dist(self.tile))
         # FLEEING
         if self.is_ranged and self.tile.dist(nearest_pc.tile) < 1.25:
@@ -222,7 +222,7 @@ class Creature(SimpleSprite, CascadeElement):
         if self.abilities and not self.silenced:
             ability = random.choice(self.abilities)
             if ability.current_cooldown == 0:
-                valid_targets = self.game.get_valid_targets(self, ability)
+                valid_targets = self.combat.get_valid_targets(self, ability)
                 if valid_targets:
                     target = random.choice(valid_targets)
                     self.use_ability(ability, target)
@@ -231,7 +231,7 @@ class Creature(SimpleSprite, CascadeElement):
         if not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25:
             tile = self.step_to(nearest_pc.tile)
             # Only swap position with a lesser hp ally to avoid dancing
-            if tile not in self.game.creatures or self.game.creatures[tile].is_pc != self.is_pc or self.game.creatures[tile].health < self.health:
+            if tile not in self.combat.creatures or self.combat.creatures[tile].is_pc != self.is_pc or self.combat.creatures[tile].health < self.health:
                 self.move_or_attack(tile)
                 return
         # IDLE

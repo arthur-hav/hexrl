@@ -250,8 +250,8 @@ class NextToActDisplay (CascadeElement):
         self.subsprites = []
         self.basex, self.basey = 904, 92
 
-    def update(self, game):
-        to_act = sorted(game.creatures.values(), key= lambda x: x.next_action) * 2
+    def update(self, combat):
+        to_act = sorted(combat.creatures.values(), key= lambda x: x.next_action) * 2
         self.subsprites = []
         for actor in to_act[:14]:
             self.subsprites.append(SimpleSprite(actor.image_name))
@@ -274,7 +274,7 @@ class StepHint(CascadeElement):
             return
         self.must_show = True
         for i, neighbour in enumerate(creature.tile.neighbours()):
-            if not neighbour.in_boundaries() or neighbour in creature.game.creatures:
+            if not neighbour.in_boundaries() or neighbour in creature.combat.creatures:
                 self.subsprites[i].must_show = False
                 continue
             x, y = neighbour.display_location()
@@ -304,7 +304,7 @@ class HelpInterface(Interface, CascadeElement):
             (K_ESCAPE, self.cancel),
             ])
         t = Tooltip()
-        t.set_text("""The game mostly plays with numpad. 
+        t.set_text("""The combat mostly plays with numpad. 
 Use [4-9] to move or attack adjacent tile.
 Use special abilities with numpad [1-3], confirm target with mouse click or [Enter].
 [0] to idle for half a turn.
@@ -337,17 +337,17 @@ class TargetInterface(Interface):
             (K_ESCAPE, self.cancel),
             ('[0-9]', self.choose),
             ])
-        self.target = self.father.game.selected if self.father.game.selected \
-            and self.father.game.selected in valid_targets else valid_targets[0]
+        self.target = self.father.combat.selected if self.father.combat.selected \
+            and self.father.combat.selected in valid_targets else valid_targets[0]
         self.valid_targets = valid_targets
         self.ability = ability
-        self.father.game_ui.cursor.animate('icons/target-cursor.png')
-        self.father.game_ui.arena.step_hints.must_show = False
+        self.father.combat_ui.cursor.animate('icons/target-cursor.png')
+        self.father.combat_ui.arena.step_hints.must_show = False
         self.updates = 0
 
     def cancel(self, key):
         self.target = None
-        self.father.game.selected = None
+        self.father.combat.selected = None
         self.done()
 
     def choose(self, key):
@@ -362,13 +362,13 @@ class TargetInterface(Interface):
 
     def update(self, mouse_pos):
         self.updates += 1
-        self.father.game_ui.update(self.father.game, mouse_pos)
-        range_hint = self.father.game.get_range_hint(self.father.game.to_act, self.ability)
+        self.father.combat_ui.update(self.father.combat, mouse_pos)
+        range_hint = self.father.combat.get_range_hint(self.father.combat.to_act, self.ability)
         for target in range_hint:
-            self.father.game_ui.arena.board[target].animate('tiles/GreyTile2.png')
-        splash_hint = self.father.game.get_splash_hint(self.father.game.to_act, self.ability, self.target)
+            self.father.combat_ui.arena.board[target].animate('tiles/GreyTile2.png')
+        splash_hint = self.father.combat.get_splash_hint(self.father.combat.to_act, self.ability, self.target)
         for target in splash_hint:
-            self.father.game_ui.arena.board[target].animate('tiles/Yellow2.png')
+            self.father.combat_ui.arena.board[target].animate('tiles/Yellow2.png')
         targets_hint = []
         backgrounds = []
         for i, target in enumerate(self.valid_targets):
@@ -383,23 +383,23 @@ class TargetInterface(Interface):
         tile = GameTile.get_tile_for_mouse(mouse_pos)
         if tile and tile in self.valid_targets:
             self.target = tile
-        self.father.game_ui.display()
+        self.father.combat_ui.display()
         for t in backgrounds:
             t.display()
         for t in targets_hint:
             t.display()
-        self.father.game_ui.cursor.display()
+        self.father.combat_ui.cursor.display()
 
     def on_click(self, mouse_pos):
         self.target = GameTile.get_tile_for_mouse(mouse_pos)
         if self.target and self.target in self.valid_targets:
-            self.father.game.selected = None
-            self.father.game_ui.arena.step_hints.must_show = True
+            self.father.combat.selected = None
+            self.father.combat_ui.arena.step_hints.must_show = True
             self.done()
 
     def confirm(self):
-        self.father.game.selected = None
-        self.father.game_ui.arena.step_hints.must_show = True
+        self.father.combat.selected = None
+        self.father.combat_ui.arena.step_hints.must_show = True
         self.done()
 
 
@@ -424,5 +424,43 @@ class QuitInterface(Interface, CascadeElement):
 
     def confirm(self, key):
         exit(0)
+
+
+class GameUI(CascadeElement):
+    def __init__(self, combat):
+        super().__init__(self)
+        self.arena = Arena()
+        self.cursor = SimpleSprite('icons/magnifyingglass.png')
+        self.hover_display = InfoDisplay(18, 90)
+        self.log_display = LogDisplay()
+        self.bg = SimpleSprite('bg.png')
+        self.dmg_log_display = DamageLogDisplay()
+        self.to_act_display = NextToActDisplay()
+        self.hover_xair = HoverXair('icons/target.png')
+        self.hover_xair.rect.x, self.hover_xair.rect.y = GameTile(0, 0).display_location()
+        self.selected_xair = HoverXair('icons/select.png')
+        self.subsprites = [self.bg, self.arena, self.log_display, self.dmg_log_display, self.to_act_display,
+                           self.hover_display, self.hover_xair, self.selected_xair, self.cursor]
+        for c in combat.creatures.values():
+            self.subsprites.insert(3, c)
+        self.log_display.push_text('Press [?] for help and keybindings')
+        self.game_frame = 0
+
+    def update(self, combat, mouse_pos):
+        self.game_frame += 1
+        self.cursor.rect.x, self.cursor.rect.y = mouse_pos[0] - 10, mouse_pos[1] - 10
+        tile = GameTile.get_tile_for_mouse(mouse_pos)
+        self.hover_xair.update(tile)
+        self.selected_xair.update(combat.selected)
+        creature = combat.creatures.get(tile, combat.creatures.get(combat.selected, combat.to_act))
+        for creature in combat.creatures.values():
+            if creature not in self.subsprites:
+                self.subsprites.insert(3, creature)
+        if creature:
+            self.hover_display.update(creature, mouse_pos)
+            self.hover_display.must_show = True
+        else:
+            self.hover_display.must_show = False
+        self.arena.update(combat.to_act)
 
 

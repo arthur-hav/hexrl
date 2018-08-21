@@ -1,9 +1,9 @@
 import mock
-from game import *
+from combat import *
 from gametile import GameTile
 
 
-class FakeGame:
+class FakeCombat:
     def __init__(self):
         self.creatures = {}
 
@@ -75,7 +75,7 @@ class TestCreature:
 
     def test_move(self):
         c = Creature('Archer')
-        c.set_in_game(FakeGame(), GameTile(0, 0), 0)
+        c.set_in_combat(FakeCombat(), GameTile(0, 0), 0)
         
         c.move_or_attack(GameTile(0, 1))
 
@@ -83,11 +83,11 @@ class TestCreature:
         assert c.next_action == 100
 
     def test_attack(self):
-        f = FakeGame()
+        f = FakeCombat()
         c1 = Creature('Archer', is_pc=True)
         c2 = Creature('Archer', is_pc=False)
-        c1.set_in_game(f, GameTile(0, 0), 0)
-        c2.set_in_game(f, GameTile(0, 1), 0)
+        c1.set_in_combat(f, GameTile(0, 0), 0)
+        c2.set_in_combat(f, GameTile(0, 1), 0)
         
         c1.move_or_attack(GameTile(0, 1))
 
@@ -95,16 +95,36 @@ class TestCreature:
         assert c1.next_action == 100
         assert c2.health == c2.maxhealth - c1.damage
 
-    def test_ability(self):
-        f = FakeGame()
+    def test_cleave(self):
+        f = FakeCombat()
         c1 = Creature('Barbarian', is_pc=True)
         c2 = Creature('Archer', is_pc=False)
-        c1.set_in_game(f, GameTile(0, 0), 0)
-        c2.set_in_game(f, GameTile(0, 1), 0)
+        c1.set_in_combat(f, GameTile(0, 0), 0)
+        c2.set_in_combat(f, GameTile(0, 1), 0)
         
         c1.use_ability(c1.abilities[0], c1.tile)
 
         assert c1.next_action == 100
         assert c1.abilities[0].current_cooldown == 200
         assert c2.health == c2.maxhealth - round(1.2 * c1.damage)
+
+
+class TestCombat:
+    def test_targets(self):
+        c1 = Creature('Archer', is_pc=True)
+        g = Combat([(c1, (0, 0))], [('Skeleton', (0, 1))])
+
+        targets = g.get_valid_targets(c1, c1.abilities[0])
+
+        assert targets == [GameTile(0, 1)]
+
+    def test_range(self):
+        c1 = Creature('Archer', is_pc=True)
+        g = Combat([(c1, (0, 0))], [('Skeleton', (0, 1))])
+
+        hint = g.get_range_hint(c1, c1.abilities[0])
+
+        assert GameTile(0, 2) not in hint
+        assert GameTile(0, -2) in hint
+        assert GameTile(1, -1.5) in hint
 

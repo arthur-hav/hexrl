@@ -21,7 +21,7 @@ class Ability(SimpleSprite):
     def range_hint(self, creature, target):
         if self.need_los:
             for tile in creature.tile.raycast(target):
-                if tile != target and tile in creature.game.creatures and creature.game.creatures[tile].is_pc != creature.is_pc:
+                if tile != target and tile in creature.combat.creatures and creature.combat.creatures[tile].is_pc != creature.is_pc:
                     return False
         return creature.tile.dist(target) <= self.ability_range + 0.25
 
@@ -38,8 +38,8 @@ class Ability(SimpleSprite):
 class BoltAbility(Ability):
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) \
-                and target in creature.game.creatures \
-                and creature.game.creatures[target].is_pc != creature.is_pc
+                and target in creature.combat.creatures \
+                and creature.combat.creatures[target].is_pc != creature.is_pc
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
@@ -47,7 +47,7 @@ class BoltAbility(Ability):
         for tile in creature.tile.raycast(target, go_through=True):
             if tile.dist(creature.tile) > self.ability_range + 0.25:
                 break
-            target_cr = creature.game.creatures.get(tile, None)
+            target_cr = creature.combat.creatures.get(tile, None)
             if target_cr and target_cr.is_pc != creature.is_pc:
                 target_cr.take_damage(damage, 'magic')
                 # target_cr.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
@@ -59,18 +59,18 @@ class BoltAbility(Ability):
 class DamageAbility(Ability):
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) \
-                and target in creature.game.creatures \
-                and creature.game.creatures[target].is_pc != creature.is_pc
+                and target in creature.combat.creatures \
+                and creature.combat.creatures[target].is_pc != creature.is_pc
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
         creature.health -= self.health_cost
         if creature.health <= 0:
             creature.health = 1
-        target_cr = creature.game.creatures[target]
+        target_cr = creature.combat.creatures[target]
         damage = self.power + round(creature.damage * self.damagefactor)
         target_cr.take_damage(damage, self.damage_type)
-        # creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
+        # creature.combat.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
 
 class AoeAbility(DamageAbility):
@@ -78,10 +78,10 @@ class AoeAbility(DamageAbility):
         super().apply_ability(creature, target)
         damage = self.power + round(creature.damage * self.damagefactor * self.aoe)
         for tile in target.neighbours():
-            splash_cr = creature.game.creatures.get(tile, None)
+            splash_cr = creature.combat.creatures.get(tile, None)
             if splash_cr and splash_cr.is_pc != creature.is_pc:
                 splash_cr.take_damage(damage)
-                # creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
+                # creature.combat.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
     def splash_hint(self, creature, selected, target):
         return target in selected.neighbours()
@@ -90,15 +90,15 @@ class AoeAbility(DamageAbility):
 class ShieldAbility(Ability):
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) \
-                and target in creature.game.creatures \
-                and creature.game.creatures[target].is_pc == creature.is_pc
+                and target in creature.combat.creatures \
+                and creature.combat.creatures[target].is_pc == creature.is_pc
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
         power = self.power  # + round(creature.damage * self.damagefactor)
-        target_cr = creature.game.creatures[target]
+        target_cr = creature.combat.creatures[target]
         target_cr.shield = max(target_cr.shield, power)
-        # creature.game.log_display.push_text("%s gains a magical shield." % (target_cr.name))
+        # creature.combat.log_display.push_text("%s gains a magical shield." % (target_cr.name))
 
 
 class NovaAbility(Ability):
@@ -109,10 +109,10 @@ class NovaAbility(Ability):
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
         damage = round(creature.damage * self.damagefactor)
-        for cr in list(creature.game.creatures.values()):
+        for cr in list(creature.combat.creatures.values()):
             if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
                 cr.take_damage(damage, self.damage_type)
-                # creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
+                # creature.combat.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
     def splash_hint(self, creature, selected, target):
         return self.range_hint(creature, target)
@@ -120,22 +120,21 @@ class NovaAbility(Ability):
 class Invocation(Ability):
 
     def is_valid_target(self, creature, target):
-        return self.range_hint(creature, target) and target not in creature.game.creatures
+        return self.range_hint(creature, target) and target not in creature.combat.creatures
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
         from creatures import Creature
         c = Creature(self.defkey)
-        c.set_in_game(creature.game, target, creature.next_action + 100)
+        c.set_in_combat(creature.combat, target, creature.next_action + 100)
         c.is_pc = creature.is_pc
-        c.game.subsprites.insert(7, c)
-        # creature.game.log_display.push_text("%s raises %s !" % (creature.name, c.name))
+        # creature.combat.log_display.push_text("%s raises %s !" % (creature.name, c.name))
 
 
 class StatusAbility(Ability):
 
     def is_valid_target(self, creature, target):
-        return self.range_hint(creature, target) and target in creature.game.creatures
+        return self.range_hint(creature, target) and target in creature.combat.creatures
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
@@ -143,25 +142,25 @@ class StatusAbility(Ability):
         status_class = STATUSES[self.name][0]
         status_args = STATUSES[self.name][1]
         status_effect = status_class(self.duration, *status_args)
-        target_cr = creature.game.creatures[target]
+        target_cr = creature.combat.creatures[target]
         target_cr.add_status(status_effect)
 
 
 class TeleportAbility(Ability):
     def is_valid_target(self, creature, target):
-        return self.range_hint(creature, target) and target not in creature.game.creatures
+        return self.range_hint(creature, target) and target not in creature.combat.creatures
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
-        creature.game.creatures[target] = creature
-        del creature.game.creatures[creature.tile]
+        creature.combat.creatures[target] = creature
+        del creature.combat.creatures[creature.tile]
         creature.tile = target
         creature.rect.x, creature.rect.y = creature.tile.display_location()
 
 
 class EnnemyStatusAbility(StatusAbility):
     def is_valid_target(self, creature, target):
-        return super().is_valid_target(creature, target) and creature.game.creatures[target].is_pc != creature.is_pc
+        return super().is_valid_target(creature, target) and creature.combat.creatures[target].is_pc != creature.is_pc
 
 
 class ScreamAbility(Ability):
@@ -175,10 +174,10 @@ class ScreamAbility(Ability):
         status_class = STATUSES['Silence'][0]
         status_args = STATUSES['Silence'][1]
         status_effect = status_class(self.duration, *status_args)
-        for cr in list(creature.game.creatures.values()):
+        for cr in list(creature.combat.creatures.values()):
             if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
                 cr.take_damage(damage, 'magic')
-                # creature.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
+                # creature.combat.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
                 cr.add_status(status_effect)
 
 

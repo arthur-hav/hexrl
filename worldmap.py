@@ -28,6 +28,8 @@ class EquipInterface(Interface, CascadeElement):
         if int(teamnum) >= len(self.father.pc_list):
             return
         self.item.equip(self.father.pc_list[int(teamnum) - 1])
+        if self.item.consumable:
+            self.father.inventory.remove(self.item)
         self.done()
 
     def unequip(self, key):
@@ -121,6 +123,7 @@ class StatusDisplay(CascadeElement):
                 ei.display()
                 self.worldinterface.desactivate()
                 break
+
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):

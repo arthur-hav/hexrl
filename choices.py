@@ -1,5 +1,4 @@
 import random
-import os
 import items
 from pygame.locals import *
 from display import Interface, SimpleSprite, TextSprite, CascadeElement

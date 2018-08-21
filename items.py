@@ -1,5 +1,5 @@
 from display import SimpleSprite
-from abilities import StatusAbility, ABILITIES
+from abilities import ABILITIES
 
 
 class Item(SimpleSprite):
@@ -9,6 +9,8 @@ class Item(SimpleSprite):
         self.image_name = image_name
         self.shop_price = shop_price
         self.equipped_to = None
+        self.consumable = False
+
     def equip(self, creature):
         equipped_to = self.equipped_to
         if equipped_to:
@@ -22,6 +24,15 @@ class Item(SimpleSprite):
         self.on_unequip()
         self.equipped_to.items.remove(self)
         self.equipped_to = None
+
+
+class Consumable(SimpleSprite):
+    def __init__(self, name, image_name, shop_price):
+        super().__init__(image_name)
+        self.name = name
+        self.image_name = image_name
+        self.shop_price = shop_price
+        self.consumable = True
 
 
 class StatsItem(Item):
@@ -58,9 +69,16 @@ class AbilityItem(Item):
     def on_unequip(self):
         self.equipped_to.abilities.pop(self.index)
 
+class HealthPotion(Consumable):
+    def __str__(self):
+        return 'This item gives back full health on use'
+
+    def equip(self, creature):
+        creature.health = creature.maxhealth
 
 ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),
-    'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown':200} )),
-    'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration':250, 'is_instant':True,}))
+    'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown': 200} )),
+    'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration': 250, 'is_instant': True,})),
+    'HealthPotion': (HealthPotion, ('HealthPotion', 'tiles/potion.png', 10))
 }

@@ -1,6 +1,8 @@
-import mock
 from combat import *
 from gametile import GameTile
+from worldmap import *
+from items import HealthPotion
+import mock
 
 
 class FakeCombat:
@@ -45,7 +47,6 @@ class TestGametile:
 
         assert GameTile.get_tile_for_mouse((xt1, yt1)) == self.t1
         assert GameTile.get_tile_for_mouse((xt1 + 20, yt1 + 20)) == self.t1
-
 
     def test_raycast(self):
         ray = list(self.t1.raycast(self.t2))
@@ -128,3 +129,30 @@ class TestCombat:
         assert GameTile(0, -2) in hint
         assert GameTile(1, -1.5) in hint
 
+
+class TestWorldMap:
+    @mock.patch('worldmap.TextSprite', mock.MagicMock())
+    @mock.patch('worldmap.SimpleSprite', mock.MagicMock())
+    def setup(self):
+        self.wm = WorldInterface(None)
+
+    def test_start(self):
+        self.wm.new_game(3)
+
+        assert self.wm.current_question_key == 'start'
+        assert len(self.wm.pc_list) == 5
+
+    @mock.patch('worldmap.TextSprite', mock.MagicMock())
+    @mock.patch('worldmap.SimpleSprite', mock.MagicMock())
+    @mock.patch('display.DISPLAY', mock.MagicMock())
+    def test_potion(self):
+        pot = HealthPotion('test', 'tiles/potion.png', 0)
+        self.wm.new_game(3)
+        self.wm.inventory.append(pot)
+        self.wm.pc_list[0].health = 1
+        ei = EquipInterface(self.wm, pot)
+
+        ei.equip('1')
+
+        assert self.wm.pc_list[0].health == self.wm.pc_list[0].maxhealth
+        assert self.wm.inventory == []

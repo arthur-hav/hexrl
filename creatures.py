@@ -368,8 +368,8 @@ DEFS = {
     'Banshee': {
         'portrait': 'portraits/Necromancer.png',
         'image_name': 'tiles/banshee.png',
-        'health': 80,
-        'damage': 10,
+        'health': 70,
+        'damage': 9,
         'name': 'Banshee',
         'abilities': [('Scream', {'ability_range': 2, 'damagefactor': 1, 'cooldown': 200, 'duration':300 })],
     },

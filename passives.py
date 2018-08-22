@@ -38,21 +38,27 @@ class RegenerationPassive(Passive):
             t += ' when below %d health' % self.maxhealth
         return t
 
+
 class HealPassive(Passive):
     def apply_to(self, creature):
-        old_end_game = creature.end_game
+        old_end_game = creature.end_combat
+
         def new_end_game():
             old_end_game()
-            for creature in self.game.creatures.values():
-                creature.health += self.amount
-                creature.health = min(creature.health, creature.maxhealth)
+            for cr in creature.combat.creatures.values():
+                if cr.health > 0:
+                    cr.health += self.amount
+                    cr.health = min(cr.health, cr.maxhealth)
         creature.end_game = new_end_game
+
     def get_short_desc(self):
         t = 'Heal +%d' % self.amount
         return t
+
     def get_description(self):
         t = 'Heals all party for %d health after every combat' % self.amount
         return t
+
 
 class ShieldPassive(Passive):
     def apply_to(self, creature):

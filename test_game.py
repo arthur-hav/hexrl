@@ -146,7 +146,7 @@ class TestWorldMap:
     @mock.patch('worldmap.SimpleSprite', mock.MagicMock())
     @mock.patch('display.DISPLAY', mock.MagicMock())
     def test_potion(self):
-        pot = HealthPotion('test', 'tiles/potion.png', 0)
+        pot = HealthPotion('test', 'tiles/red-potion.png', 0)
         self.wm.new_game(3)
         self.wm.inventory.append(pot)
         self.wm.pc_list[0].health = 1

@@ -100,7 +100,7 @@ ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),
     'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown': 200} )),
     'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration': 250, 'is_instant': True,})),
-    'Health potion': (HealthPotion, ('Health potion', 'tiles/potion.png', 15)),
-    'Elixir of might': (DamageElixir, ('Elixir of might', 'tiles/potion.png', 120)),
-    'Elixir of endurance': (HealthElixir, ('Elixir of endurance', 'tiles/potion.png', 100)),
+    'Health potion': (HealthPotion, ('Health potion', 'tiles/red-potion.png', 15)),
+    'Elixir of might': (DamageElixir, ('Elixir of might', 'tiles/blue-potion.png', 120)),
+    'Elixir of endurance': (HealthElixir, ('Elixir of endurance', 'tiles/green-potion.png', 100)),
 }

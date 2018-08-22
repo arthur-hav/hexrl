@@ -1,6 +1,7 @@
 from display import SimpleSprite
 from math import ceil
 
+
 class Status(SimpleSprite):
     def __init__(self, duration, name, image_name):
         super().__init__(image_name)

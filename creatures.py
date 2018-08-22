@@ -87,6 +87,9 @@ class Creature(SimpleSprite, CascadeElement):
         self.status = []
 
     def end_combat(self):
+        for status in self.status:
+            status.status_end()
+        self.status = []
         self.combat = None
         self.tile = None
 
@@ -300,9 +303,8 @@ DEFS = {
         'damage': 10,
         'name': 'Enchantress',
         'passives':[('PartyHeal', {'amount':5})],
-        'abilities': [('Root', {'ability_range':4, 'cooldown':200, 'duration':400, 'need_los': True})],
+        'abilities': [('Root', {'ability_range':4, 'cooldown':200, 'duration': 300, 'need_los': True})],
     },
-
 
     'Gobelin': {
         'portrait': 'portraits/Gobelin.png',

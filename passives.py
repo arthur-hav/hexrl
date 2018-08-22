@@ -27,9 +27,9 @@ class RegenerationPassive(Passive):
         creature.end_combat = new_end_game
 
     def get_short_desc(self):
-        t = 'Regen +%d' % self.rate
+        t = 'Regen %d' % self.rate
         if self.maxhealth:
-            t += ' to %d' % self.maxhealth
+            t += ' below %d' % self.maxhealth
         return t
 
     def get_description(self):
@@ -41,18 +41,18 @@ class RegenerationPassive(Passive):
 
 class HealPassive(Passive):
     def apply_to(self, creature):
-        old_end_game = creature.end_combat
+        old_end_combat = creature.end_combat
 
-        def new_end_game():
-            old_end_game()
+        def new_end_combat():
+            old_end_combat()
             for cr in creature.combat.creatures.values():
                 if cr.health > 0:
                     cr.health += self.amount
                     cr.health = min(cr.health, cr.maxhealth)
-        creature.end_game = new_end_game
+        creature.end_combat = new_end_combat
 
     def get_short_desc(self):
-        t = 'Heal +%d' % self.amount
+        t = 'Heal %d' % self.amount
         return t
 
     def get_description(self):

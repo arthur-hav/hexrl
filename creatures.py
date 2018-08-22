@@ -137,11 +137,11 @@ class Creature(SimpleSprite, CascadeElement):
             status.tick(self, elapsed_time)
 
     def step_to(self, target):
-        return min(self.tile.neighbours(), key = lambda x: x.dist(target))
+        return min(self.tile.neighbours(), key=lambda x: x.dist(target))
 
     def step_away(self, target):
         try:
-            return max([t for t in self.tile.neighbours() if t not in self.combat.creatures], key = lambda x: x.dist(target))
+            return max([t for t in self.tile.neighbours() if t not in self.combat.creatures], key=lambda x: x.dist(target))
         except ValueError:
             return None
 

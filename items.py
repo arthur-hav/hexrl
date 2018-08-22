@@ -13,8 +13,6 @@ class Item(SimpleSprite):
 
     def equip(self, creature):
         equipped_to = self.equipped_to
-        if equipped_to:
-            self.unequip()
         if equipped_to != creature:
             creature.items.append(self)
             self.equipped_to = creature
@@ -59,16 +57,15 @@ class AbilityItem(Item):
         self.ability = ABILITIES[ability]
         self.ability_def = self.ability[1].copy()
         self.ability_def.update(ability_def)
+        self.ability = self.ability[0](**self.ability_def)
 
     def __str__(self):
         return 'This item gives the ability %s' % self.ability_def['name']
 
     def on_equip(self, creature):
-        creature.abilities.append(self.ability[0](**self.ability_def))
-        self.index = len(creature.abilities) - 1
-
+        creature.abilities.append(self.ability)
     def on_unequip(self):
-        self.equipped_to.abilities.pop(self.index)
+        self.equipped_to.abilities.remove(self.ability)
 
 
 class HealthPotion(Consumable):

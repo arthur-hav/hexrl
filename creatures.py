@@ -99,7 +99,7 @@ class Creature(SimpleSprite, CascadeElement):
     def dict_dump(self):
         items = self.items.copy()
         # This is so we dont stack stats by saving/loading with, say, a health amulet
-        for item in self.items:
+        for item in items:
             item.unequip()
         d = {
             'items': [item.name for item in items],

@@ -159,7 +159,6 @@ class StatusDisplay(CascadeElement):
                     self.worldinterface.inventory.append(item)
 
 
-
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
         CascadeElement.__init__(self)

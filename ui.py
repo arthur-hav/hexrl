@@ -3,6 +3,16 @@ from math import ceil
 from pygame.locals import *
 from gametile import GameTile
 
+def dfs(creature, tile, maxdepth, visited=None):
+    if not visited:
+        visited = {tile}
+    if maxdepth == 0:
+        return visited
+    for neighb in tile.neighbours():
+        if neighb.in_boundaries() and (neighb not in creature.combat.creatures or creature.combat.creatures[neighb].is_pc):
+            visited.add(neighb)
+            dfs(creature, neighb, maxdepth - 1, visited)
+    return visited
 
 class Arena(CascadeElement):
     def __init__(self):
@@ -19,6 +29,9 @@ class Arena(CascadeElement):
             sprite.animate('tiles/GreyTile.png')
         # Highlight active player
         self.board[creature.tile].animate('tiles/Green2.png')
+        if creature.is_pc:
+            for tile in dfs(creature, creature.tile, creature.free_moves + 1):
+                self.board[tile].animate('tiles/Green2.png')
         self.step_hints.update(creature)
 
 

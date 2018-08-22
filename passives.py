@@ -44,11 +44,11 @@ class HealPassive(Passive):
         old_end_combat = creature.end_combat
 
         def new_end_combat():
-            old_end_combat()
             for cr in creature.combat.creatures.values():
                 if cr.health > 0:
                     cr.health += self.amount
                     cr.health = min(cr.health, cr.maxhealth)
+            old_end_combat()
         creature.end_combat = new_end_combat
 
     def get_short_desc(self):

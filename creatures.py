@@ -51,6 +51,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = None
         self.combat = None
         self.next_action = 0
+        self.free_moves = 1
         self.shield = 0
         self.is_pc = is_pc
         self.defkey = defkey
@@ -84,6 +85,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.combat.creatures[game_tile] = self
         self.next_action = next_action
         self.shield = 0
+        self.free_moves = 1
         self.status = []
 
     def end_combat(self):
@@ -167,13 +169,17 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = destination
         self.rect.x, self.rect.y = self.tile.display_location()
         self.combat.creatures[destination] = self
-        self.end_act()
+        if self.free_moves:
+            self.free_moves -= 1
+        else:
+            self.end_act()
 
     def idle(self):
         self.end_act()
 
     def end_act(self):
         self.next_action += 100
+        self.free_moves = 1
 
     def attack(self, destination):
         creature = self.combat.creatures[destination]
@@ -277,7 +283,7 @@ DEFS = {
         'magic_resist': 1,
         'name': 'Barbarian',
         'passives':[('Regeneration', {'rate': 2, 'maxhealth':25})],
-        'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1.2, 'cooldown':200})]
+        'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1, 'cooldown':200})]
     },
     'Archer': {
         'portrait': 'portraits/Archer.png',

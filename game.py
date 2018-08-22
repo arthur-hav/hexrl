@@ -417,7 +417,7 @@ class StepHint(CascadeElement):
             self.must_display = [False] * 6
             return
         for i, neighbour in enumerate(creature.tile.neighbours()):
-            if not neighbour.in_boundaries():
+            if not neighbour.in_boundaries() or neighbour in creature.game.creatures:
                 self.must_display[i] = False
                 continue
             self.subsprites[i].textsprites[0].rect.x, self.subsprites[i].textsprites[0].rect.y = neighbour.display_location()
@@ -487,7 +487,6 @@ class Game(CascadeElement):
         self.selected = None
         self.spawn_creatures(pc_list, mob_list)
         self.log_display.push_text('Press [?] for help and keybindings')
-        self.display()
         self.new_turn()
         self.game_frame = 0
 
@@ -543,7 +542,7 @@ class Game(CascadeElement):
         if creature:
             self.hover_display.update(creature, mouse_pos)
             if self.hover_display not in self.subsprites:
-                self.subsprites.insert(7, self.hover_display)
+                self.subsprites.insert(-3, self.hover_display)
         elif self.hover_display in self.subsprites:
             self.subsprites.remove(self.hover_display)
         #self.dmg_log_display.update()

@@ -33,6 +33,22 @@ class RegenerationPassive(Passive):
             t += ' when below %d health' % self.maxhealth
         return t
 
+class HealPassive(Passive):
+    def apply_to(self, creature):
+        old_end_game = creature.end_game
+        def new_end_game():
+            old_end_game()
+            for creature in self.game.creatures.values():
+                creature.health += self.amount
+                creature.health = min(creature.health, creature.maxhealth)
+        creature.end_game = new_end_game
+    def get_short_desc(self):
+        t = 'Heal +%d' % self.amount
+        return t
+    def get_description(self):
+        t = 'Heals all party for %d health after every combat' % self.amount
+        return t
+
 class ShieldPassive(Passive):
     def apply_to(self, creature):
         old_end_act = creature.end_act
@@ -61,7 +77,8 @@ class CooldownReduction(Passive):
 
 
 PASSIVES = {
-        'Regeneration': (RegenerationPassive, {'name': 'Regeneration', 'image_name':'icons/heart.png'}),
+        'Regeneration': (RegenerationPassive, {'name': 'Regeneration', 'image_name':'icons/heartplus.png'}),
         'Shield': (ShieldPassive, {'name': 'Shield', 'image_name':'icons/shield-icon.png'}),
         'Fastcast': (CooldownReduction, {'name': 'Fastcast', 'image_name':'icons/smite.png'}),
+        'PartyHeal': (HealPassive, {'name': 'PartyHeal', 'image_name':'icons/heart.png'}),
 }

@@ -9,7 +9,6 @@ import math
 class SideHealthGauge(Gauge):
     def __init__(self, creature):
         self.creature = creature
-        self.displayed = False
         super().__init__(4, 32, '#BB0008')
     def update(self):
         self.height = math.ceil((16 * self.creature.health) / self.creature.maxhealth) * 2
@@ -22,7 +21,6 @@ class SideHealthGauge(Gauge):
 class SideShieldGauge(Gauge):
     def __init__(self, creature):
         self.creature = creature
-        self.displayed = False
         super().__init__(4, 32, '#BBCCFF')
     def update(self):
         self.height = math.ceil((16 * self.creature.shield) / self.creature.maxhealth) * 2
@@ -279,7 +277,8 @@ DEFS = {
         'health': 70,
         'damage': 10,
         'name': 'Enchantress',
-        'abilities': [('Root', {'ability_range':5, 'cooldown':0, 'duration':200})],
+        'passives':[('PartyHeal', {'amount':5})],
+        'abilities': [('Root', {'ability_range':4, 'cooldown':200, 'duration':400, 'need_los': True})],
     },
 
 

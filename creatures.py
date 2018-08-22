@@ -376,7 +376,7 @@ DEFS = {
     },
     'Banshee': {
         'portrait': 'portraits/Necromancer.png',
-        'image_name': 'tiles/banshee.png',
+        'image_name': 'tiles/Banshee.png',
         'health': 70,
         'damage': 9,
         'name': 'Banshee',

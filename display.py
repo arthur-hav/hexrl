@@ -17,7 +17,8 @@ if not pygame.font:
 if not pygame.mixer: 
     print ('Warning, sound disabled')
 
-class Display():
+
+class Display:
     def __init__(self):
         #Initialize Everything
         self.key_handlers = defaultdict(list)
@@ -29,15 +30,19 @@ class Display():
 
     def subscribe_key(self, key, eventhandler):
         self.key_handlers[key].append(eventhandler)
+
     def subscribe_click(self, eventhandler):
         self.mouse_handlers.append(eventhandler)
+
     def subscribe_update(self, eventhandler):
         self.update_handlers.append(eventhandler)
 
     def unsubscribe_key(self, key, eventhandler):
         self.key_handlers[key].remove(eventhandler)
+
     def unsubscribe_click(self, eventhandler):
         self.mouse_handlers.remove(eventhandler)
+
     def unsubscribe_update(self, eventhandler):
         self.update_handlers.remove(eventhandler)
 
@@ -49,10 +54,12 @@ class Display():
         #pygame.mouse.set_visible(0)
         #Display The Background
         pygame.display.flip()
+
     def main(self):
         while True:
             pygame.display.flip()
-            #Handle Input Events
+            # Handle Input Events
+            pos = pygame.mouse.get_pos()
             for event in pygame.event.get():
                 if event.type == QUIT:
                     exit(0)
@@ -68,16 +75,18 @@ class Display():
                     pass
                 elif event.type == MOUSEBUTTONUP:
                     pass
-            pos = pygame.mouse.get_pos()
             for handler in self.update_handlers:
                 handler(pos)
             time.sleep(0.020)
 
+
 DISPLAY = Display()
+
 
 def load_sound(name):
     class NoneSound:
-        def play(self): pass
+        def play(self):
+            pass
     if not pygame.mixer or not pygame.mixer.get_init():
         return NoneSound()
     main_dir = os.path.split(os.path.abspath(__file__))[0]
@@ -91,22 +100,27 @@ def load_sound(name):
     return sound
 
 #    whiff_sound = load_sound('whiff.wav')
-#    whiff_sound.play() 
-#classes for our game objects
+#    whiff_sound.play()
 
-class CascadeElement():
+
+class CascadeElement:
     def __init__(self, subsprites=[]):
         self.subsprites = subsprites
+        self.must_show = True
+
     def display(self):
+        if not self.must_show:
+            return
         for sprite in self.subsprites:
             sprite.display()
+
 
 class SimpleSprite (pygame.sprite.Sprite):
     """ Simple sprites refreshed every frame."""
     #functions to create our resources
     loaded_images = {}
     @staticmethod
-    def load_image(name, colorkey=None):
+    def load_image(name):
         main_dir = os.path.split(os.path.abspath(__file__))[0]
         data_dir = os.path.join(main_dir, 'data')
         fullname = os.path.join(data_dir, name)
@@ -120,20 +134,21 @@ class SimpleSprite (pygame.sprite.Sprite):
             raise SystemExit(str(geterror()))
         return image
 
-    def __init__(self, image_name, flipped=False, subsprites=[]):
+    def __init__(self, image_name):
         super(SimpleSprite, self).__init__()
         self.image = self.load_image(image_name)
         rect = self.image.get_rect()
         self.image = pygame.transform.scale(self.image, (rect.w * 2, rect.h * 2)) 
         self.rect = self.image.get_rect()
-        self.subsprites = subsprites
         self.frame_name = image_name
+        self.must_show = True
 
     def move_to(self, x, y):
         self.rect.x, self.rect.y = x, y
 
     def display(self):
-        DISPLAY.screen.blit(self.image, self.rect)
+        if self.must_show:
+            DISPLAY.screen.blit(self.image, self.rect)
     
     def animate(self, frame_name):
         if frame_name == self.frame_name:
@@ -142,6 +157,7 @@ class SimpleSprite (pygame.sprite.Sprite):
         rect = self.image.get_rect()
         self.image = pygame.transform.scale(self.image, (rect.w * 2, rect.h * 2)) 
         self.frame_name = frame_name
+
 
 class Gauge(pygame.sprite.Sprite):
     def __init__(self, width, height, color):
@@ -153,12 +169,14 @@ class Gauge(pygame.sprite.Sprite):
         self.color = color
         self.rect = self.image.get_rect()
         self.image.fill(pygame.Color(color))
+        self.must_show = True
 
     def move_to(self, x, y):
         self.rect.x, self.rect.y = x, y
 
     def display(self):
-        DISPLAY.screen.blit(self.image, self.rect)
+        if self.must_show:
+            DISPLAY.screen.blit(self.image, self.rect)
 
     def set_width (self, size):
         self.image = pygame.Surface((size, self.height))
@@ -170,7 +188,8 @@ class Gauge(pygame.sprite.Sprite):
         self.image.fill(pygame.Color(self.color))
         self.height = size
 
-class TextSprite ():
+
+class TextSprite:
     """ Text sprites, can be re-used through set_text """
     def __init__ (self, text, color, x=0, y=0, maxlen=None):
         self.font = pygame.font.Font("data/font/Vera.ttf", 8)
@@ -179,7 +198,7 @@ class TextSprite ():
         self.x = x
         self.y = y
         self.textsprites = []
-        self.is_displayed = False
+        self.must_show = True
         self._render(text)
 
     def _render(self, text):
@@ -191,7 +210,6 @@ class TextSprite ():
             sprite.image = self.font.render(word, False, pygame.Color(*self.color))
             (w, h) = self.font.size (word)
             sprite.image = pygame.transform.scale(sprite.image, (w * 2, h * 2)) 
-            rect = sprite.image.get_rect()
             sprite.rect = pygame.Rect (self.x + i, self.y + j, w, h)
             self.textsprites.append(sprite)
             i += w * 2 + 6
@@ -205,11 +223,13 @@ class TextSprite ():
         self._render(text)
 
     def display(self):
-        self.is_displayed = True
+        if not self.must_show:
+            return
         for sprite in self.textsprites:
             DISPLAY.screen.blit(sprite.image, sprite.rect)
 
-class Interface ():
+
+class Interface:
     """Represents a scene, or a window modal, listening to events and
     eventually returning to a parent window."""
     def __init__(self, father, keys=[]):

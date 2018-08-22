@@ -1,1 +1,6 @@
 pygame
+
+#For tests
+
+pytest
+mock

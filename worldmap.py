@@ -1,5 +1,6 @@
-from game import GameTile, GameInterface, Creature
-from display import Display, Interface, TextSprite, SimpleSprite, CascadeElement, DISPLAY
+from combat import CombatInterface
+from display import Interface, TextSprite, SimpleSprite, CascadeElement
+from creatures import Creature
 from pygame.locals import *
 import choices
 import random
@@ -7,31 +8,37 @@ import items
 import json
 import os
 
+
 class EquipInterface(Interface, CascadeElement):
     def __init__(self, father, item):
+        CascadeElement.__init__(self)
         self.item = item
         self.bg = SimpleSprite('helpmodal.png')
         self.bg.rect.x, self.bg.rect.y = 262, 200
-        self.text = TextSprite('Equip adventurer with [1-5]. Unequip with [0]. [Esc] to cancel.', '#ffffff', 274, 250)
+        self.text = TextSprite('Apply to adventurer with [1-5]. [Esc] to cancel.', '#ffffff', 274, 250, maxlen=350)
         self.stats = TextSprite(str(item), '#ffffff', 274, 220, maxlen=350)
         self.subsprites = [self.bg, self.stats, self.text]
         Interface.__init__(self, father, keys = [
             (K_ESCAPE, lambda x: self.done()),
             ('[1-5]', self.equip),
-            ('0', self.unequip),
             ])
+
     def equip(self, teamnum):
-        if teamnum > len(self.father.pc_list):
+        if int(teamnum) >= len(self.father.pc_list):
             return
-        self.item.equip(self.father.pc_list[int(teamnum)])
+        self.item.equip(self.father.pc_list[int(teamnum) - 1])
+        self.father.inventory.remove(self.item)
         self.done()
-    def unequip(self, key):
-        if self.item.equipped_to:
-            self.item.unequip()
-        self.done()
+
+    def update(self, pos):
+        self.father.update(pos)
+        super().update(pos)
+        self.display()
+
 
 class MainMenuInterface(Interface, CascadeElement):
     def __init__(self):
+        CascadeElement.__init__(self)
         self.bg = SimpleSprite('menu.png')
         self.hello = TextSprite('Choose a save slot with keys 1-3', '#ffffff', 320, 280)
         self.slots = []
@@ -57,45 +64,84 @@ class MainMenuInterface(Interface, CascadeElement):
         wi.display()
         self.desactivate()
 
+    def on_return(self, defunct=None):
+        for i in range(3):
+            try:
+                slotname = 'Day %d' % json.load(open('save%d.json' % (i + 1)))['day']
+            except FileNotFoundError:
+                slotname = 'Empty'
+            self.slots[i].set_text('[%d] Slot - %s' % (i + 1, slotname))
+
     def update(self, mouse_pos):
         self.display()
 
+
+class TeammateDisplay(CascadeElement):
+    def __init__(self, creature, basex, basey):
+        super().__init__()
+        self.basex, self.basey = basex, basey
+        self.pc = creature
+        self.pc.rect.x, self.pc.rect.y = basex, basey
+        self.health_stat = TextSprite('', '#ffffff', basex + 38, basey + 4)
+        self.inventory = [
+            SimpleSprite('icons/icon-blank.png'),
+            SimpleSprite('icons/icon-blank.png'),
+            SimpleSprite('icons/icon-blank.png'),
+        ]
+        for i, sprite in enumerate(self.inventory):
+            sprite.rect.x, sprite.rect.y = basex + 120 + 32 * i, basey
+        for i, item in enumerate(self.pc.items):
+            item.rect.x, item.rect.y = self.inventory[i].rect.x, self.inventory[i].rect.y
+        self.subsprites = [self.pc, self.health_stat] + self.inventory + self.pc.items
+
+    def update(self):
+        if self.pc.health < 0:
+            self.must_show = False
+        self.pc.rect.x, self.pc.rect.y = self.basex, self.basey
+        self.health_stat.set_text("%s/%s" % (self.pc.health, self.pc.maxhealth))
+        for item in self.pc.items:
+            if item not in self.subsprites:
+                self.subsprites.append(item)
+        for item in self.subsprites[5:]:
+            if item not in self.pc.items:
+                self.subsprites.remove(item)
+        for i, item in enumerate(self.pc.items):
+            item.rect.x, item.rect.y = self.inventory[i].rect.x, self.inventory[i].rect.y
+
+
 class StatusDisplay(CascadeElement):
     def __init__(self, worldinterface):
+        super().__init__()
         self.worldinterface = worldinterface
         self.gold_icon = SimpleSprite('icons/gold.png')
-        self.gold_icon.rect.x, self.gold_icon.rect.y = 754, 92
-        self.gold_stat = TextSprite('', '#ffffff', 786, 100)
-        self.day_text = TextSprite('', '#ffffff', 786, 132)
-        self.inventory = [] 
-        for i in range(20):
+        self.gold_icon.rect.x, self.gold_icon.rect.y = 20, 50
+        self.gold_stat = TextSprite('', '#ffffff', 58, 54)
+        self.day_text = TextSprite('', '#ffffff', 20, 90)
+        self.inventory = []
+        self.items = []
+        for i in range(10):
             self.inventory.append(SimpleSprite('icons/icon-blank.png'))
-            self.inventory[i].rect.x, self.inventory[i].rect.y = 754 + (i % 4) * 32, 350 + (i // 4) * 32
+            self.inventory[i].rect.x, self.inventory[i].rect.y = 50 + (i % 5) * 32, 380 + (i // 5) * 32
         self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory
-        self.health_stats = []
-        self.pc_icons = []
-        for i in range(5):
-            pc_tile = SimpleSprite('tiles/Skeleton.png')
-            pc_tile.rect.x, pc_tile.rect.y = 754, 158 + 32 * i
-            pc_health_stat = TextSprite('', '#ffffff', 786, 164 + 32 * i)
-            self.health_stats.append(pc_health_stat)
-            self.pc_icons.append(pc_tile)
+        self.teammates = []
 
     def update(self, mouse_pos):
-        self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory
-        self.item_sprites = []
+        if not self.teammates:
+            for i, pc in enumerate(self.worldinterface.pc_list):
+                self.teammates.append(TeammateDisplay(pc, 20, 158 + 40 * i))
         self.gold_stat.set_text(str(self.worldinterface.party_gold))
-        for i, pc in enumerate(self.worldinterface.pc_list):
-            self.health_stats[i].set_text("%s/%s" % (pc.health, pc.maxhealth))
-            self.day_text.set_text("Day %d" % self.worldinterface.day)
-            self.pc_icons[i].animate(pc.image_name)
-            self.subsprites.append(self.pc_icons[i])
-            self.subsprites.append(self.health_stats[i])
+        self.day_text.set_text("Day %d" % self.worldinterface.day)
+
+        for pc in self.teammates:
+            pc.update()
+
         for i, item in enumerate(self.worldinterface.inventory):
-            if item.equipped_to:
-                self.inventory[i].animate('tiles/Green2.png')
             item.rect.x, item.rect.y = self.inventory[i].rect.x, self.inventory[i].rect.y
-            self.subsprites.append(item)
+            self.items.append(item)
+        for item in self.items.copy():
+            if item not in self.worldinterface.inventory:
+                self.items.remove(item)
+        self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory + self.teammates + self.items
 
     def on_click(self, mouse_pos):
         for sprite in self.worldinterface.inventory:
@@ -104,10 +150,18 @@ class StatusDisplay(CascadeElement):
                 ei.activate()
                 ei.display()
                 self.worldinterface.desactivate()
-                break
+                return
+
+        for pc in self.worldinterface.pc_list:
+            for item in pc.items:
+                if item.rect.collidepoint(mouse_pos):
+                    item.unequip()
+                    self.worldinterface.inventory.append(item)
+
 
 class WorldInterface(Interface, CascadeElement):
     def __init__(self, father):
+        CascadeElement.__init__(self)
         self.inventory_display = StatusDisplay(self)
         self.mob_list = []
         self.current_question_key = ''
@@ -119,13 +173,14 @@ class WorldInterface(Interface, CascadeElement):
         self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
         self.choice_text = [TextSprite('', '#ffffff', 320, 400 + 16 * i) for i in range(4)] 
         self.subsprites = [self.bg, self.current_text, self.inventory_display] + self.choice_text + [self.cursor]
+        self.formation = [ (-2, 4), (-1, 4.5), (0, 4), (1, 4.5), (2, 4), ]
         Interface.__init__(self, father, keys = [
             ('[1-4]', self.choose),
             (K_ESCAPE, self.quit),
             ])
 
-    def on_return(self, defunct):
-        if isinstance(defunct, GameInterface):
+    def on_return(self, defunct=None):
+        if isinstance(defunct, CombatInterface):
             self.pick()
         self.pc_list = [pc for pc in self.pc_list if pc.health > 0]
 
@@ -147,7 +202,7 @@ class WorldInterface(Interface, CascadeElement):
         ]
         self.pick()
 
-    def pick (self):
+    def pick(self):
         self.previous_question = self.current_question_key
         if not any((pc.health > 0 for pc in self.pc_list)):
             self.current_question_key = 'gameover'
@@ -189,8 +244,8 @@ class WorldInterface(Interface, CascadeElement):
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos
         self.display()
 
-    def start_game(self, mobs):
-        gi = GameInterface(self, mobs)
+    def start_combat(self, mobs):
+        gi = CombatInterface(self, mobs)
         gi.activate()
         self.desactivate()
 
@@ -213,6 +268,9 @@ class WorldInterface(Interface, CascadeElement):
 
     def quit(self, mouse_pos):
         self.done()
+
+    def erase_save(self):
+        os.unlink('save%d.json' % self.slot)
 
     def load_game(self, slot):
         self.slot = slot
@@ -240,17 +298,10 @@ class WorldInterface(Interface, CascadeElement):
         self.previous_question = ''
         self.this_day_question += 1
         self.pick()
+
     def next_day(self):
         self.previous_question = ''
         self.this_day_question = 0
         self.day+= 1
         self.pick()
-
-#this calls the 'main' function when this script is executed
-if __name__ == '__main__':
-    DISPLAY.setup()
-    m = MainMenuInterface()
-    m.activate()
-    m.display()
-    DISPLAY.main()
 

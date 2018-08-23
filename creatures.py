@@ -33,6 +33,7 @@ class SideShieldGauge(Gauge):
 
 
 class Creature(SimpleSprite, CascadeElement):
+    FREE_MOVES = 1
     def __init__(self, defkey, is_pc=False):
         CascadeElement.__init__(self)
         self.is_ranged = False
@@ -51,7 +52,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = None
         self.combat = None
         self.next_action = 0
-        self.free_moves = 1
+        self.free_moves = self.FREE_MOVES
         self.shield = 0
         self.is_pc = is_pc
         self.defkey = defkey
@@ -85,12 +86,12 @@ class Creature(SimpleSprite, CascadeElement):
         self.combat.creatures[game_tile] = self
         self.next_action = next_action
         self.shield = 0
-        self.free_moves = 1
+        self.free_moves = self.FREE_MOVES
         self.status = []
 
     def end_combat(self):
         for status in self.status:
-            status.status_end()
+            status.status_end(self)
         self.status = []
         self.combat = None
         self.tile = None
@@ -179,7 +180,7 @@ class Creature(SimpleSprite, CascadeElement):
 
     def end_act(self):
         self.next_action += 100
-        self.free_moves = 1
+        self.free_moves = self.FREE_MOVES
 
     def attack(self, destination):
         creature = self.combat.creatures[destination]
@@ -228,7 +229,7 @@ class Creature(SimpleSprite, CascadeElement):
         nearest_pc = min([c for c in self.combat.creatures.values() if c.is_pc],
                          key=lambda x: x.tile.dist(self.tile))
         # FLEEING
-        if self.is_ranged and self.tile.dist(nearest_pc.tile) < 1.25:
+        if self.is_ranged and self.tile.dist(nearest_pc.tile) < 2.25:
             tile = self.step_away(nearest_pc.tile)
             if tile and tile.in_boundaries() and not self.rooted:
                 self.move_or_attack(tile)
@@ -243,7 +244,7 @@ class Creature(SimpleSprite, CascadeElement):
                     self.use_ability(ability, target)
                     return
         # HUNTING
-        if not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25:
+        if (not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25) and (not self.is_ranged or nearest_pc.tile.dist(self.tile) > 4.25):
             tile = self.step_to(nearest_pc.tile)
             # Only swap position with a lesser hp ally to avoid dancing
             if tile not in self.combat.creatures or self.combat.creatures[tile].is_pc != self.is_pc or self.combat.creatures[tile].health < self.health:
@@ -291,6 +292,7 @@ DEFS = {
         'health': 80,
         'damage': 12,
         'name': 'Archer',
+        'passives': [('Quick', {'bonus_moves': 1})],
         'abilities': [('Arrow', {'ability_range' : 4, 'damagefactor':1, 'need_los' : True,})],
     },
     'Wizard': {
@@ -299,7 +301,7 @@ DEFS = {
         'health': 70,
         'damage': 10,
         'name': 'Wizard',
-        'passives':[('Fastcast', {'cdr':3})],
+        'passives':[('Fastcast', {})],
         'abilities': [('Fireball', {'ability_range' : 3, 'power':5, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':200,})],
     },
     'Enchantress': {
@@ -318,6 +320,7 @@ DEFS = {
         'health': 50,
         'damage': 8,
         'name': 'Gobelin',
+        'passives': [('Quick', {'bonus_moves': 2})],
         'abilities': [],
     },
     'Troll': {
@@ -378,7 +381,7 @@ DEFS = {
         'damage': 8,
         'name': 'Imp',
         'description': 'Small caster demon',
-        'abilities': [('Lightning', {'ability_range' : 5, 'power':4, 'damagefactor':1, 'cooldown':200,})],
+        'abilities': [('Lightning', {'ability_range' : 5, 'damagefactor':1})],
     },
     'Banshee': {
         'portrait': 'portraits/Necromancer.png',

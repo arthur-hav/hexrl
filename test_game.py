@@ -75,12 +75,24 @@ class TestCreature:
         assert c.health == 75
 
     def test_move(self):
-        c = Creature('Archer')
+        c = Creature('Barbarian')
         c.set_in_combat(FakeCombat(), GameTile(0, 0), 0)
         
         c.move_or_attack(GameTile(0, 1))
 
         assert c.tile == GameTile(0, 1)
+        assert c.free_moves == 0
+        assert c.next_action == 0
+
+    def test_two_move(self):
+        c = Creature('Barbarian')
+        c.set_in_combat(FakeCombat(), GameTile(0, 0), 0)
+
+        c.move_or_attack(GameTile(0, 1))
+        c.move_or_attack(GameTile(0, 2))
+
+        assert c.tile == GameTile(0, 2)
+        assert c.free_moves == 1
         assert c.next_action == 100
 
     def test_attack(self):
@@ -102,12 +114,29 @@ class TestCreature:
         c2 = Creature('Archer', is_pc=False)
         c1.set_in_combat(f, GameTile(0, 0), 0)
         c2.set_in_combat(f, GameTile(0, 1), 0)
-        
+
         c1.use_ability(c1.abilities[0], c1.tile)
 
         assert c1.next_action == 100
         assert c1.abilities[0].current_cooldown == 200
-        assert c2.health == c2.maxhealth - round(1.2 * c1.damage)
+        assert c2.health == c2.maxhealth - c1.damage
+        assert c1.health == c1.maxhealth
+
+    def test_fireball(self):
+        f = FakeCombat()
+        c1 = Creature('Wizard', is_pc=True)
+        c2 = Creature('Archer', is_pc=False)
+        c3 = Creature('Archer', is_pc=False)
+        c1.set_in_combat(f, GameTile(0, 0), 0)
+        c2.set_in_combat(f, GameTile(0, 1), 0)
+        c3.set_in_combat(f, GameTile(1, 0.5), 0)
+
+        c1.use_ability(c1.abilities[0], c2.tile)
+
+        assert c1.abilities[0].current_cooldown == 200
+        assert c2.health == c2.maxhealth - 15
+        assert c3.health == c3.maxhealth - 11
+        assert c1.health == c1.maxhealth
 
 
 class TestCombat:

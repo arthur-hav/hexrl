@@ -28,10 +28,10 @@ class Arena(CascadeElement):
         for sprite in self.board.values():
             sprite.animate('tiles/GreyTile.png')
         # Highlight active player
-        self.board[creature.tile].animate('tiles/Green2.png')
         if creature.is_pc:
             for tile in dfs(creature, creature.tile, creature.free_moves + 1):
-                self.board[tile].animate('tiles/Green2.png')
+                self.board[tile].animate('tiles/Green1.png')
+        self.board[creature.tile].animate('tiles/Green2.png')
         self.step_hints.update(creature)
 
 

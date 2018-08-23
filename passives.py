@@ -76,25 +76,46 @@ class ShieldPassive(Passive):
         return 'Every turn, gains a shield preventing %d damage' % self.shield
 
 
-class CooldownReduction(Passive):
+class Fastcast(Passive):
     def apply_to(self, creature):
         old_use = creature.use_ability
 
         def use_ability(ability, target):
+            old_ability_instant = ability.is_instant
+            ability.is_instant = True
             old_use(ability, target)
-            ability.current_cooldown = round(10 * ability.current_cooldown / (self.cdr + 10))
+            if old_ability_instant:
+                return
+            if creature.free_moves:
+                creature.free_moves -= 1
+            else:
+                creature.end_act()
+            ability.is_instant = old_ability_instant
         creature.use_ability = use_ability
 
     def get_short_desc(self):
-        return 'Fastcast %s' % self.cdr
+        return 'Fastcast'
 
     def get_description(self):
-        return 'Divides all cooldown by %.1f' % (1 + self.cdr / 10)
+        return 'Casting abilities cost 1 movement instead of ending turn'
+
+
+class Quick(Passive):
+    def apply_to(self, creature):
+        total_moves = self.bonus_moves + 1
+        creature.FREE_MOVES = total_moves
+
+    def get_short_desc(self):
+        return 'Quick %d' % self.bonus_moves
+
+    def get_description(self):
+        return 'Gains %d bonus moves' % self.bonus_moves
 
 
 PASSIVES = {
         'Regeneration': (RegenerationPassive, {'name': 'Regeneration', 'image_name':'icons/heartplus.png'}),
         'Shield': (ShieldPassive, {'name': 'Shield', 'image_name':'icons/shield-icon.png'}),
-        'Fastcast': (CooldownReduction, {'name': 'Fastcast', 'image_name':'icons/smite.png'}),
+        'Fastcast': (Fastcast, {'name': 'Fastcast', 'image_name': 'icons/smite.png'}),
         'PartyHeal': (HealPassive, {'name': 'PartyHeal', 'image_name':'icons/heart.png'}),
+        'Quick': (Quick, {'name': 'Quick', 'image_name':'icons/quickness.png'})
 }

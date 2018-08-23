@@ -76,7 +76,7 @@ class DamageAbility(Ability):
 class AoeAbility(DamageAbility):
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
-        damage = self.power + round(creature.damage * self.damagefactor * self.aoe)
+        damage = round((self.power + creature.damage * self.damagefactor) * self.aoe)
         for tile in target.neighbours():
             splash_cr = creature.combat.creatures.get(tile, None)
             if splash_cr and splash_cr.is_pc != creature.is_pc:
@@ -165,7 +165,9 @@ class EnnemyStatusAbility(StatusAbility):
 
 class ScreamAbility(Ability):
     def is_valid_target(self, creature, target):
-        return target == creature.tile
+        return self.range_hint(creature, target) \
+                and target in creature.combat.creatures \
+                and creature.combat.creatures[target].is_pc != creature.is_pc
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
@@ -185,7 +187,7 @@ ABILITIES = {
         'Raise Undead': (Invocation, {'name':'Raise undead', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Skeleton','description':'Places a skeleton on an empty tile of the battlefield.'}),
         'Call Imp': (Invocation, {'name':'Call Imp', 'image_name':'icons/skull.png', 'image_cd':'icons/skull-cd.png',  'defkey':'Imp', 'description':'Places an imp on an empty tile of the battlefield.'}),
         'Arrow': (DamageAbility, {'name' : 'Fire arrow', 'image_name' : 'icons/arrow.png',  'description' : 'Ranged attack for equal damage than melee', 'damage_type':'physical'}),
-        'Smite': (DamageAbility, {'name' : 'Smite', 'image_name' : 'icons/smite.png',  'description' : 'Inflicts true damage in exchange for health', 'damage_type':'true'}),
+        'Smite': (DamageAbility, {'name' : 'Smite', 'image_name' : 'icons/smite.png', 'image_cd': 'icons/smite-cd.png',  'description' : 'Inflicts true damage in exchange for health', 'damage_type':'true'}),
         'Fireball': (AoeAbility, {'name' : 'Fireball', 'image_name' : 'icons/fireball.png', 'image_cd':'icons/fireball-cd.png', 'description' : 'Ranged attack inflicting splash damage on adjacent ennemies.', 'damage_type':'magic'}),
         'Lightning': (BoltAbility, {'name' : 'Lightning', 'image_name' : 'icons/lightning.png', 'image_cd':'icons/lightning-cd.png','description':'Ranged attack passing through a line of ennemies, damaging them.', 'damage_type':'magic'}),
         'Cleave': (NovaAbility, {'name' : 'Cleave', 'image_name':'icons/cleave.png', 'image_cd':'icons/cleave-cd.png', 'description': 'Simultaneously attack all ennemies in melee range', 'damage_type':'physical'}),

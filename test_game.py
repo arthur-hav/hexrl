@@ -166,7 +166,7 @@ class TestWorldMap:
         self.wm = WorldInterface(None)
 
     def test_start(self):
-        self.wm.new_game(3)
+        self.wm.new_game(4)
 
         assert self.wm.current_question_key == 'start'
         assert len(self.wm.pc_list) == 5
@@ -176,7 +176,7 @@ class TestWorldMap:
     @mock.patch('display.DISPLAY', mock.MagicMock())
     def test_potion(self):
         pot = HealthPotion('test', 'tiles/red-potion.png', 0)
-        self.wm.new_game(3)
+        self.wm.new_game(4)
         self.wm.inventory.append(pot)
         self.wm.pc_list[0].health = 1
         ei = EquipInterface(self.wm, pot)

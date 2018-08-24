@@ -170,54 +170,51 @@ class MapTile(SimpleSprite):
         pass
 
     def dict_dump(self):
-        return ["MapTile"]
+        return "MapTile"
 
     @staticmethod
-    def load(tile, *args):
-        return MapTile(tile)
-
-    @staticmethod
-    def from_list(d, tile):
-        classname = d[0]
-        args = d[1:]
-        return TILES[classname].load(tile, *args)
+    def from_list(classname, tile):
+        return TILES[classname](tile)
 
 
-class FightTile(MapTile):
+class SkeletonTile(MapTile):
     def __init__(self, tile):
-        MapTile.__init__(self, tile, 'tiles/GreyTile.png')
-        CascadeElement.__init__(self)
-        if random.random() > 0.5:
-            self.type = 'Skeleton'
-            self.fight_sprite = SimpleSprite('tiles/Skeleton.png')
-        else:
-            self.type = 'Gobelin'
-            self.fight_sprite = SimpleSprite('tiles/Gobelin.png')
+        super().__init__(tile, 'tiles/GreyTile.png')
+        self.fight_sprite = SimpleSprite('tiles/Skeleton.png')
         self.fight_sprite.rect = self.rect
 
     def on_step(self, worldinterface):
-        if self.type == 'Skeleton':
-            min_i = min(4, worldinterface.level // 2 + 1)
-            mobs = [('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i)]
-        elif self.type == 'Gobelin':
-            min_i = min(4, worldinterface.level // 2 + 1)
-            mobs = [('Gobelin', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i)]
+        min_i = min(4, worldinterface.level // 2 + 1)
+        mobs = [('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i)]
         worldinterface.start_combat(mobs=mobs)
         worldinterface.map.board[worldinterface.pc_position] = MapTile(worldinterface.pc_position)
 
     def dict_dump(self):
-        return ["FightTile", self.type]
+        return "SkeletonTile"
 
     def display(self):
         MapTile.display(self)
         self.fight_sprite.display()
 
-    @staticmethod
-    def load(tile, *args):
-        f = FightTile(tile)
-        f.mobs = args[0]
-        return f
 
+class GobelinTile(MapTile):
+    def __init__(self, tile):
+        super().__init__(tile, 'tiles/GreyTile.png')
+        self.fight_sprite = SimpleSprite('tiles/Gobelin.png')
+        self.fight_sprite.rect = self.rect
+
+    def dict_dump(self):
+        return "GobelinTile"
+
+    def on_step(self, worldinterface):
+        min_i = min(4, worldinterface.level // 2 + 1)
+        mobs = [('Gobelin', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i)]
+        worldinterface.start_combat(mobs=mobs)
+        worldinterface.map.board[worldinterface.pc_position] = MapTile(worldinterface.pc_position)
+
+    def display(self):
+        MapTile.display(self)
+        self.fight_sprite.display()
 
 class GoldTile(MapTile):
     def __init__(self, tile):
@@ -237,11 +234,8 @@ class GoldTile(MapTile):
         worldinterface.map.board[worldinterface.pc_position] = MapTile(worldinterface.pc_position)
 
     def dict_dump(self):
-        return ["GoldTile"]
+        return "GoldTile"
 
-    @staticmethod
-    def load(tile, *args):
-        return GoldTile(tile)
 
 
 class WallTile(MapTile):
@@ -250,7 +244,7 @@ class WallTile(MapTile):
         self.is_wall = True
 
     def dict_dump(self):
-        return ["WallTile"]
+        return "WallTile"
 
     @staticmethod
     def load(tile, *args):
@@ -262,18 +256,13 @@ class StairTile(MapTile):
         super().__init__(tile, 'icons/stairs-icon.png')
 
     def on_step(self, worldinterface):
-        worldinterface.map.gen_random()
-        worldinterface.pc_position = GameTile(0, 0)
+        worldinterface.pc_position = worldinterface.map.gen_random()
         worldinterface.pc_sprite.rect.x, worldinterface.pc_sprite.rect.y = worldinterface.pc_position.display_location()
         worldinterface.level += 1
         worldinterface.save_game()
 
     def dict_dump(self):
-        return ["StairTile"]
-
-    @staticmethod
-    def load(tile, *args):
-        return StairTile(tile)
+        return "StairTile"
 
 
 class WorldMap(CascadeElement):
@@ -284,12 +273,14 @@ class WorldMap(CascadeElement):
     def rand_tile(self, game_tile):
         if random.random() > 0.2:
             return MapTile(game_tile)
-        if random.random() > 0.5:
+        if random.random() > 0.7:
             return GoldTile(game_tile)
-        return FightTile(game_tile)
+        if random.random() > 0.5:
+            return GobelinTile(game_tile)
+        return SkeletonTile(game_tile)
 
     def gen_room(self, tile):
-        self.board[tile] = self.rand_tile(tile)
+        self.board[tile] = WallTile(tile)
         for neighb in tile.neighbours():
             self.board[neighb] = self.rand_tile(neighb)
             for wall in neighb.neighbours():
@@ -299,12 +290,18 @@ class WorldMap(CascadeElement):
     def gen_random(self):
         self.board = {}
         self.gen_room(GameTile(0, 0))
+        extremums = []
         for neighb in GameTile(0, 0).neighbours():
             self.board[neighb + neighb] = self.rand_tile(neighb + neighb)
             self.gen_room(neighb + neighb + neighb + neighb)
-        random_tile = random.choice(list(self.board.keys()))
-        self.board[random_tile] = StairTile(random_tile)
-        self.board[GameTile(0, 0)] = MapTile(GameTile(0, 0))
+            extremums.append(neighb+neighb+neighb+neighb+neighb+neighb)
+        random_stair = random.choice(extremums)
+        extremums.remove(random_stair)
+        self.board[random_stair] = StairTile(random_stair)
+        pc_tile = random.choice(extremums)
+        pc_tile = GameTile(pc_tile.x * 5 / 6, pc_tile.y * 5 / 6)
+        self.board[pc_tile] = MapTile(pc_tile)
+        return pc_tile
 
     def update(self, pc_position):
         self.subsprites = [t for k, t in self.board.items() if k == pc_position or k in pc_position.raycast(k, valid_steps=[step for step, tile in self.board.items() if not tile.is_wall])]
@@ -322,10 +319,11 @@ class WorldMap(CascadeElement):
 
 TILES = {
     "MapTile": MapTile,
-    "FightTile": FightTile,
     "GoldTile": GoldTile,
     "WallTile": WallTile,
-    "StairTile": StairTile
+    "StairTile": StairTile,
+    "SkeletonTile": SkeletonTile,
+    "GobelinTile": GobelinTile
 }
 
 
@@ -371,7 +369,8 @@ class WorldInterface(Interface, CascadeElement):
             Creature('Wizard', is_pc=True),
             Creature('Enchantress', is_pc=True),
         ]
-        self.map.gen_random()
+        self.pc_position = self.map.gen_random()
+        self.pc_sprite.rect.x, self.pc_sprite.rect.y = self.pc_position.display_location()
 
     def display_choices(self):
         pass

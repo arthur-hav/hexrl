@@ -10,11 +10,7 @@ def get_question(key):
     return SPECIAL_CHOICES[key]
 
 
-def exp_reward():
-    i = 350
-    while random.random() > 0.5:
-        i += 350
-    return random.randint(i, i + 350)
+
 
 
 def exp_discount():

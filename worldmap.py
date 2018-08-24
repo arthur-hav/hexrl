@@ -45,7 +45,7 @@ class MainMenuInterface(Interface, CascadeElement):
         self.slots = []
         for i in range(3):
             try:
-                slotname = 'Day %d' % json.load(open('save%d.json' % (i + 1)))['day']
+                slotname = 'Day %d' % json.load(open('save%d.json' % (i + 1)))['level']
             except FileNotFoundError:
                 slotname = 'Empty'
             self.slots.append(TextSprite('[%d] Slot - %s' % (i + 1, slotname), '#ffffff', 320, 300 + 20 * i))
@@ -185,14 +185,15 @@ class MapTile(SimpleSprite):
 
 class FightTile(MapTile):
     def __init__(self, tile):
+        MapTile.__init__(self, tile, 'tiles/GreyTile.png')
+        CascadeElement.__init__(self)
         if random.random() > 0.5:
             self.type = 'Skeleton'
-            image = 'tiles/Skeleton.png'
+            self.fight_sprite = SimpleSprite('tiles/Skeleton.png')
         else:
             self.type = 'Gobelin'
-            image = 'tiles/Gobelin.png'
-
-        super().__init__(tile, image)
+            self.fight_sprite = SimpleSprite('tiles/Gobelin.png')
+        self.fight_sprite.rect = self.rect
 
     def on_step(self, worldinterface):
         if self.type == 'Skeleton':
@@ -206,6 +207,10 @@ class FightTile(MapTile):
 
     def dict_dump(self):
         return ["FightTile", self.type]
+
+    def display(self):
+        MapTile.display(self)
+        self.fight_sprite.display()
 
     @staticmethod
     def load(tile, *args):
@@ -302,7 +307,7 @@ class WorldMap(CascadeElement):
         self.board[GameTile(0, 0)] = MapTile(GameTile(0, 0))
 
     def update(self, pc_position):
-        self.subsprites = [t for k, t in self.board.items() if k in pc_position.raycast(k, valid_steps=[step for step, tile in self.board.items() if not tile.is_wall])]
+        self.subsprites = [t for k, t in self.board.items() if k == pc_position or k in pc_position.raycast(k, valid_steps=[step for step, tile in self.board.items() if not tile.is_wall])]
 
     def dict_dump(self):
         d = {}

@@ -3,6 +3,7 @@ from math import ceil
 from pygame.locals import *
 from gametile import GameTile
 
+
 def dfs(creature, tile, maxdepth, visited=None):
     if not visited:
         visited = {tile}
@@ -13,6 +14,7 @@ def dfs(creature, tile, maxdepth, visited=None):
             visited.add(neighb)
             dfs(creature, neighb, maxdepth - 1, visited)
     return visited
+
 
 class Arena(CascadeElement):
     def __init__(self):

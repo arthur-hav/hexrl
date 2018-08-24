@@ -1,5 +1,5 @@
 from creatures import Creature
-from ui import *
+from combat_ui import *
 from gametile import GameTile
 
 

@@ -68,7 +68,7 @@ class MainMenuInterface(Interface, CascadeElement):
     def on_return(self, defunct=None):
         for i in range(3):
             try:
-                slotname = 'Day %d' % json.load(open('save%d.json' % (i + 1)))['day']
+                slotname = 'Level %d' % json.load(open('save%d.json' % (i + 1)))['level']
             except FileNotFoundError:
                 slotname = 'Empty'
             self.slots[i].set_text('[%d] Slot - %s' % (i + 1, slotname))
@@ -131,7 +131,7 @@ class StatusDisplay(CascadeElement):
             for i, pc in enumerate(self.worldinterface.pc_list):
                 self.teammates.append(TeammateDisplay(pc, 20, 158 + 40 * i))
         self.gold_stat.set_text(str(self.worldinterface.party_gold))
-        self.day_text.set_text("Day %d" % self.worldinterface.day)
+        self.day_text.set_text("Level %d" % self.worldinterface.level)
 
         for pc in self.teammates:
             pc.update()
@@ -164,6 +164,7 @@ class MapTile(SimpleSprite):
     def __init__(self, tile, image_name='tiles/GreyTile.png'):
         super().__init__(image_name)
         self.rect.move_ip(*tile.display_location())
+        self.is_wall = False
 
     def on_step(self, worldinterface):
         pass
@@ -188,7 +189,6 @@ class FightTile(MapTile):
         self.mobs = [ ('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-0, 1) ]
 
     def on_step(self, worldinterface):
-        #mobs.append(('Necromancer', (0, -6)))
         worldinterface.start_combat(mobs=self.mobs)
         worldinterface.map.board[worldinterface.pc_position] = MapTile(worldinterface.pc_position)
 
@@ -202,6 +202,23 @@ class FightTile(MapTile):
         return f
 
 
+class WallTile(MapTile):
+    def __init__(self, tile):
+        super().__init__(tile, 'tiles/GreyTile2.png')
+        self.is_wall = True
+
+
+class StairTile(MapTile):
+    def __init__(self, tile):
+        super().__init__(tile, 'icons/stairs-icon.png')
+
+    def on_step(self, worldinterface):
+        worldinterface.map.gen_random()
+        worldinterface.pc_position = GameTile(0, 6)
+        worldinterface.pc_sprite.rect.x, worldinterface.pc_sprite.rect.y = worldinterface.pc_position.display_location()
+        worldinterface.level += 1
+
+
 class WorldMap(CascadeElement):
     def __init__(self):
         super().__init__()
@@ -209,13 +226,16 @@ class WorldMap(CascadeElement):
 
     def gen_random(self):
         for tile in GameTile.all_tiles():
-            if random.random() > 0.5:
+            if random.random() > 0.1:
                 self.board[tile] = MapTile(tile)
-            else:
+            elif random.random() > 0.05:
                 self.board[tile] = FightTile(tile)
+            else:
+                self.board[tile] = WallTile(tile)
+        self.board[GameTile(0, -6)] = StairTile(GameTile(0, -6))
 
     def update(self, pc_position):
-        self.subsprites = list(self.board.values())
+        self.subsprites = [t for k, t in self.board.items() if k in pc_position.raycast(k, valid_steps=[step for step, tile in self.board.items() if not tile.is_wall])]
 
     def dict_dump(self):
         d = {}
@@ -247,7 +267,7 @@ class WorldInterface(Interface, CascadeElement):
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
         #self.current_text = TextSprite('', '#ffffff', 320, 220, maxlen=300)
         #self.choice_text = [TextSprite('', '#ffffff', 320, 400 + 16 * i) for i in range(4)]
-        self.pc_position = GameTile(0, 0)
+        self.pc_position = GameTile(0, 6)
         self.pc_sprite = SimpleSprite('tiles/Fighter.png')
         self.map = WorldMap()
         self.pc_sprite.rect.x, self.pc_sprite.rect.y = self.pc_position.display_location()
@@ -268,7 +288,7 @@ class WorldInterface(Interface, CascadeElement):
     def new_game(self, slot):
         self.slot = slot
         self.party_gold = 0
-        self.day = 1
+        self.level = 1
         self.pc_list = [
             Creature('Fighter', is_pc=True),
             Creature('Barbarian', is_pc=True),
@@ -283,7 +303,10 @@ class WorldInterface(Interface, CascadeElement):
 
     def move(self, key):
         index = int(key) - 4
-        self.pc_position = self.pc_position.neighbours()[index]
+        new_position = self.pc_position.neighbours()[index]
+        if self.map.board[new_position].is_wall:
+            return
+        self.pc_position = new_position
         self.pc_sprite.rect.x, self.pc_sprite.rect.y = self.pc_position.display_location()
         self.map.board[self.pc_position].on_step(self)
 
@@ -305,7 +328,7 @@ class WorldInterface(Interface, CascadeElement):
         save = {
                 'pcs':pc_dump, 
                 'gold':self.party_gold,
-                'day': self.day,
+                'level': self.level,
                 'map':self.map.dict_dump(),
                 'inventory_dump': inventory_dump
                 }
@@ -323,7 +346,7 @@ class WorldInterface(Interface, CascadeElement):
         with open('save%d.json' % slot) as f:
             d = json.loads(f.read())
         self.party_gold = d['gold']
-        self.day = d['day']
+        self.level = d['level']
         for key in d['inventory_dump']:
             item_class = items.ITEMS[key][0]
             item_args = items.ITEMS[key][1]

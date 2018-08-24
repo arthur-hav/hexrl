@@ -48,7 +48,7 @@ class GameTile:
     def _dist_to_axis(self, d0, dx, dy, c):
         return abs(self._x * dy - self.y * dx + c) / (d0 or 1)
 
-    def raycast(self, other, go_through=False):
+    def raycast(self, other, go_through=False, valid_steps=None):
         """Used for los checks mostly"""
         CO = cos(pi / 6)
         d0 = self.dist(other)
@@ -62,6 +62,9 @@ class GameTile:
                              and n.in_boundaries()]
             for tile in forward_tiles:
                 yield tile
+            for forward_tile in forward_tiles.copy():
+                if valid_steps and forward_tile not in valid_steps:
+                    forward_tiles.remove(forward_tile)
             if forward_tiles:
                 current_tile = forward_tiles[-1]
             else:
@@ -72,6 +75,14 @@ class GameTile:
 
     def display_location(self):
         return 340 + 32 * (8 + self.x), 92 + 32 * (7 + self.y)
+
+    def dict_dump(self):
+        return "%.1f %.1f" % (self.x, self.y)
+
+    @staticmethod
+    def from_string(string):
+        x, y = string.split(' ')
+        return GameTile(float(x), float(y))
 
     @staticmethod
     def get_tile_for_mouse(mouse_pos):

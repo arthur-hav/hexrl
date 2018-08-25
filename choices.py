@@ -56,9 +56,7 @@ class RestChoice(Choice):
         return ['Rest']
 
     def choice_one(self):
-        for cr in self.world_interface.pc_list:
-            cr.health += 1 + int((cr.maxhealth - cr.health) * self.heal_percent / 100)
-            cr.health = min(cr.health, cr.maxhealth)
+
         self.world_interface.next_day()
 
 

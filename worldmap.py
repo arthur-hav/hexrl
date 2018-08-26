@@ -76,11 +76,11 @@ class MainMenuInterface(Interface, CascadeElement):
 
     def start(self, slot):
         wi = WorldInterface(self)
+        wi.activate()
         try:
             wi.load_game(int(slot))
         except FileNotFoundError as e:
             wi.new_game(int(slot))
-        wi.activate()
         wi.display()
         self.desactivate()
 
@@ -207,13 +207,13 @@ class SkeletonTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        num_skeletons = 2 + min(6, int(math.sqrt(world_interface.level)))
-        num_archers = min(5, int(math.sqrt(world_interface.level) / 1.5))
-        num_necro = min(2, int(math.sqrt(world_interface.level) / 3))
+        num_skeletons = 2 + min(6, world_interface.level // 2)
+        num_archers = min(5, world_interface.level // 3)
+        num_necro = min(2, world_interface.level//11)
 
         mobs = ['Skeleton'] * num_skeletons + ['SkeletonArcher'] * num_archers + ['Necromancer'] * num_necro
         world_interface.start_combat(mobs=mobs)
-        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)), int(math.sqrt(world_interface.level)*3))
+        world_interface.party_gold += random.randint(5 + world_interface.level // 2, 10 + world_interface.level * 2)
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
     def display(self):
@@ -228,11 +228,11 @@ class GobelinTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        num_gobelins = 1 + min(6, int(math.sqrt(world_interface.level)))
-        num_trolls = min(5, int(math.sqrt(world_interface.level) / 1.5))
+        num_gobelins = 1 + min(6, world_interface.level // 2)
+        num_trolls = min(5, world_interface.level // 3)
         mobs = ['Gobelin'] * num_gobelins + ['Troll'] * num_trolls
         world_interface.start_combat(mobs=mobs)
-        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)), int(math.sqrt(world_interface.level)*3))
+        world_interface.party_gold += random.randint(4 + world_interface.level // 2, 8 + world_interface.level * 2)
         world_interface.party_food += random.randint(40, 100)
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
@@ -248,10 +248,10 @@ class BansheeTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        num_banshees = 2 + min(6, int(math.sqrt(world_interface.level)/1.5))
+        num_banshees = 2 + min(6, world_interface.level // 3)
         mobs = ['Banshee'] * num_banshees
         world_interface.start_combat(mobs=mobs)
-        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)*2), int(math.sqrt(world_interface.level)*5))
+        world_interface.party_gold += random.randint(5 + world_interface.level, 10 + world_interface.level * 4)
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
     def display(self):
@@ -266,11 +266,11 @@ class DemonTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        num_demons = 1 + min(2, int(math.sqrt(world_interface.level) / 3))
-        num_imp = min(12, random.randint(0, int(math.sqrt(world_interface.level))))
+        num_demons = min(2, world_interface.level // 10)
+        num_imp = min(12, random.randint(0, world_interface.level // 2))
         mobs = ['Demon'] * num_demons + ['Imp'] * num_imp
         world_interface.start_combat(mobs=mobs)
-        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)*2), int(math.sqrt(world_interface.level)*5))
+        world_interface.party_gold += random.randint(5 + world_interface.level, 10 + world_interface.level * 4)
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
     def display(self):
@@ -282,17 +282,8 @@ class GoldTile(MapTile):
     def __init__(self, tile):
         super().__init__(tile, 'tiles/gold.png')
 
-    @staticmethod
-    def exp_random():
-        i = 1
-        while random.random() > 0.5:
-            i *= 2
-        return i
-
     def on_step(self, world_interface):
-        gold_max = self.exp_random() * int(math.sqrt(world_interface.level) * 4)
-        gold_min = int(math.sqrt(world_interface.level) * 2)
-        world_interface.party_gold += random.randint(gold_min, gold_max)
+        world_interface.party_gold += random.randint(5 + world_interface.level, 10 + world_interface.level * 3)
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
 
@@ -379,7 +370,7 @@ class StairTile(MapTile):
 
 
 def rand_tile(game_tile, level):
-    empty_ratio = 0.5 + 0.4 / math.sqrt(level)
+    empty_ratio = 0.5 + 0.4 / level
     if random.random() < 0.02:
         return ShopTile(game_tile)
     if random.random() < 0.05:
@@ -388,10 +379,10 @@ def rand_tile(game_tile, level):
         return FoodTile(game_tile)
     if random.random() < empty_ratio:
         return MapTile(game_tile)
-    demon_ratio = math.sqrt(max(0, level - 10)) / 10
+    demon_ratio = min(0.25, (level - 10) / 10)
     if random.random() < demon_ratio:
         return DemonTile(game_tile)
-    banshee_ratio = math.sqrt(max(0, level - 5)) / 5
+    banshee_ratio = min(0.3, (level - 5) / 5)
     if random.random() < banshee_ratio:
         return BansheeTile(game_tile)
     if random.random() < 0.5:
@@ -512,14 +503,14 @@ class WorldInterface(Interface, CascadeElement):
     def move(self, key):
         index = int(key) - 4
         new_position = self.pc_position.neighbours()[index]
+        if self.map.board[new_position].is_wall:
+            return
         self.party_food -= len(self.pc_list)
         if self.party_food < 0:
             self.erase_save()
             game_over = GameOverModal(self)
             self.desactivate()
             game_over.activate()
-        if self.map.board[new_position].is_wall:
-            return
         self.pc_position = new_position
         self.map.board[self.pc_position].on_step(self)
 
@@ -577,7 +568,7 @@ class WorldInterface(Interface, CascadeElement):
             self.inventory.append(item_class(*item_args))
         self.pc_list = [Creature.dict_load(pc, self.inventory) for pc in d['pcs']]
         self.map.load_dict(d['map'])
-        self.display_choices()
+        self.map.board[self.pc_position].on_step(self)
 
     def pay(self, amount):
         self.party_gold -= amount

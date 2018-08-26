@@ -246,7 +246,7 @@ class Creature(SimpleSprite, CascadeElement):
                     self.use_ability(ability, target)
                     return
         # HUNTING
-        if (not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25) and (not self.is_ranged or nearest_pc.tile.dist(self.tile) > 4.25):
+        if (not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25) and (not self.is_ranged or nearest_pc.tile.dist(self.tile) > 3.25):
             tile = self.step_to(nearest_pc.tile)
             # Only swap position with a lesser hp ally to avoid dancing
             if tile not in self.combat.creatures or self.combat.creatures[tile].is_pc != self.is_pc or self.combat.creatures[tile].health < self.health:

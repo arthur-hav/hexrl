@@ -142,19 +142,19 @@ class TestCreature:
 class TestCombat:
     def test_targets(self):
         c1 = Creature('Archer', is_pc=True)
-        g = Combat([(c1, (0, 0))], [('Skeleton', (0, 1))])
+        g = Combat([(c1, (0, -3))], ['Skeleton'])
 
         targets = g.get_valid_targets(c1, c1.abilities[0])
 
-        assert targets == [GameTile(0, 1)]
+        assert len(targets) == 1
 
     def test_range(self):
         c1 = Creature('Archer', is_pc=True)
-        g = Combat([(c1, (0, 0))], [('Skeleton', (0, 1))])
+        g = Combat([(c1, (0, 0))], [])
 
         hint = g.get_range_hint(c1, c1.abilities[0])
 
-        assert GameTile(0, 2) not in hint
+        assert GameTile(4, 4) not in hint
         assert GameTile(0, -2) in hint
         assert GameTile(1, -1.5) in hint
 
@@ -164,12 +164,6 @@ class TestWorldMap:
     @mock.patch('worldmap.SimpleSprite', mock.MagicMock())
     def setup(self):
         self.wm = WorldInterface(None)
-
-    def test_start(self):
-        self.wm.new_game(4)
-
-        assert self.wm.current_question_key == 'start'
-        assert len(self.wm.pc_list) == 5
 
     @mock.patch('worldmap.TextSprite', mock.MagicMock())
     @mock.patch('worldmap.SimpleSprite', mock.MagicMock())

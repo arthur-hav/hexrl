@@ -92,6 +92,8 @@ class Creature(SimpleSprite, CascadeElement):
     def end_combat(self):
         for status in self.status:
             status.status_end(self)
+        for ability in self.abilities:
+            ability.current_cooldown = 0
         self.status = []
         self.combat = None
         self.tile = None
@@ -290,7 +292,7 @@ DEFS = {
         'portrait': 'portraits/Archer.png',
         'image_name': 'tiles/Archer.png',
         'health': 80,
-        'damage': 12,
+        'damage': 14,
         'name': 'Archer',
         'passives': [('Quick', {'bonus_moves': 1})],
         'abilities': [('Arrow', {'ability_range' : 4, 'damagefactor':1, 'need_los' : True,})],

@@ -1,6 +1,7 @@
 from creatures import Creature
 from combat_ui import *
 from gametile import GameTile
+import random
 
 
 class Combat(CascadeElement):
@@ -21,9 +22,12 @@ class Combat(CascadeElement):
                 pc.set_in_combat(self, GameTile(*gt), i)
             i += 2
         i = 1
-        for mobdef, gt in mobs:
+        mob_zone = [gt for gt in GameTile.all_tiles() if gt.y < -3.25]
+        for mobdef in mobs:
+            gt = random.choice(mob_zone)
+            mob_zone.remove(gt)
             c = Creature(mobdef)
-            c.set_in_combat(self, GameTile(*gt), i)
+            c.set_in_combat(self, gt, i)
             i += 2
 
     def new_turn(self):

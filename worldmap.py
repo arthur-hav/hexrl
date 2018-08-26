@@ -9,14 +9,15 @@ import os
 from gametile import GameTile
 import math
 
+
 class EquipInterface(Interface, CascadeElement):
     def __init__(self, father, item):
         CascadeElement.__init__(self)
         self.item = item
         self.bg = SimpleSprite('helpmodal.png')
-        self.bg.rect.x, self.bg.rect.y = 262, 200
-        self.text = TextSprite('Apply to adventurer with [1-5]. [Esc] to cancel.', '#ffffff', 274, 250, maxlen=350)
-        self.stats = TextSprite(str(item), '#ffffff', 274, 220, maxlen=350)
+        self.bg.rect.x, self.bg.rect.y = 302, 200
+        self.text = TextSprite('Apply to adventurer with [1-5]. [Esc] to cancel.', '#ffffff', 330, 250, maxlen=350)
+        self.stats = TextSprite(str(item), '#ffffff', 330, 220, maxlen=350)
         self.subsprites = [self.bg, self.stats, self.text]
         Interface.__init__(self, father, keys = [
             (K_ESCAPE, lambda x: self.done()),
@@ -34,6 +35,25 @@ class EquipInterface(Interface, CascadeElement):
         self.father.update(pos)
         super().update(pos)
         self.display()
+
+
+class GameOverModal(Interface, CascadeElement):
+    def __init__(self, father):
+        CascadeElement.__init__(self)
+        Interface.__init__(self,father, keys = [
+            (K_ESCAPE, self.cancel),
+            (K_RETURN, self.cancel)
+            ])
+        self.basex, self.basey = 302, 200
+        self.bg = SimpleSprite('helpmodal.png')
+        self.bg.rect.move_ip(self.basex, self.basey)
+        self.text = TextSprite('Your party is dead. Game Over.', '#ffffff', 330, 250, maxlen=350)
+        self.subsprites = [self.bg, self.text]
+        self.display()
+
+    def cancel(self, key):
+        self.done()
+        self.father.done()
 
 
 class MainMenuInterface(Interface, CascadeElement):
@@ -116,13 +136,16 @@ class StatusDisplay(CascadeElement):
         self.gold_icon = SimpleSprite('icons/gold.png')
         self.gold_icon.rect.x, self.gold_icon.rect.y = 20, 50
         self.gold_stat = TextSprite('', '#ffffff', 58, 54)
+        self.food_icon = SimpleSprite('icons/apple.png')
+        self.food_icon.rect.x, self.food_icon.rect.y = 92, 50
+        self.food_stat = TextSprite('', '#ffffff', 130, 54)
         self.day_text = TextSprite('', '#ffffff', 20, 90)
         self.inventory = []
         self.items = []
         for i in range(10):
             self.inventory.append(SimpleSprite('icons/icon-blank.png'))
             self.inventory[i].rect.x, self.inventory[i].rect.y = 50 + (i % 5) * 32, 380 + (i // 5) * 32
-        self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory
+        self.subsprites = [self.gold_icon, self.gold_stat, self.food_icon, self.food_stat, self.day_text] + self.inventory
         self.teammates = []
 
     def update(self, mouse_pos):
@@ -130,6 +153,7 @@ class StatusDisplay(CascadeElement):
             for i, pc in enumerate(self.worldinterface.pc_list):
                 self.teammates.append(TeammateDisplay(pc, 20, 158 + 40 * i))
         self.gold_stat.set_text(str(self.worldinterface.party_gold))
+        self.food_stat.set_text(str(self.worldinterface.party_food))
         self.day_text.set_text("Level %d" % self.worldinterface.level)
 
         for pc in self.teammates:
@@ -141,7 +165,7 @@ class StatusDisplay(CascadeElement):
         for item in self.items.copy():
             if item not in self.worldinterface.inventory:
                 self.items.remove(item)
-        self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory + self.teammates + self.items
+        self.subsprites = [self.gold_icon, self.gold_stat, self.day_text, self.food_icon, self.food_stat] + self.inventory + self.teammates + self.items
 
     def on_click(self, mouse_pos):
         for sprite in self.worldinterface.inventory:
@@ -183,9 +207,13 @@ class SkeletonTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        min_i = min(4, int(math.sqrt(world_interface.level)) + 1)
-        mobs = [('Skeleton', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i+1)]
+        num_skeletons = 2 + min(6, int(math.sqrt(world_interface.level)))
+        num_archers = min(5, int(math.sqrt(world_interface.level) / 1.5))
+        num_necro = min(2, int(math.sqrt(world_interface.level) / 3))
+
+        mobs = ['Skeleton'] * num_skeletons + ['SkeletonArcher'] * num_archers + ['Necromancer'] * num_necro
         world_interface.start_combat(mobs=mobs)
+        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)), int(math.sqrt(world_interface.level)*3))
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
     def display(self):
@@ -200,9 +228,12 @@ class GobelinTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        min_i = min(4, world_interface.level // 2 + 1)
-        mobs = [('Gobelin', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i)]
+        num_gobelins = 1 + min(6, int(math.sqrt(world_interface.level)))
+        num_trolls = min(5, int(math.sqrt(world_interface.level) / 1.5))
+        mobs = ['Gobelin'] * num_gobelins + ['Troll'] * num_trolls
         world_interface.start_combat(mobs=mobs)
+        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)), int(math.sqrt(world_interface.level)*3))
+        world_interface.party_food += random.randint(40, 100)
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
     def display(self):
@@ -217,9 +248,10 @@ class BansheeTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        min_i = min(4, world_interface.level // 2 + 1)
-        mobs = [('Banshee', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i)]
+        num_banshees = 2 + min(6, int(math.sqrt(world_interface.level)/1.5))
+        mobs = ['Banshee'] * num_banshees
         world_interface.start_combat(mobs=mobs)
+        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)*2), int(math.sqrt(world_interface.level)*5))
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
     def display(self):
@@ -234,9 +266,11 @@ class DemonTile(MapTile):
         self.fight_sprite.rect = self.rect
 
     def on_step(self, world_interface):
-        min_i = min(4, world_interface.level // 2 + 1)
-        mobs = [('Demon', (i, -5 + 0.5 * (i % 2))) for i in range(-min_i, +min_i)]
+        num_demons = 1 + min(2, int(math.sqrt(world_interface.level) / 3))
+        num_imp = min(12, random.randint(0, int(math.sqrt(world_interface.level))))
+        mobs = ['Demon'] * num_demons + ['Imp'] * num_imp
         world_interface.start_combat(mobs=mobs)
+        world_interface.party_gold += random.randint(int(math.sqrt(world_interface.level)*2), int(math.sqrt(world_interface.level)*5))
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
     def display(self):
@@ -246,7 +280,7 @@ class DemonTile(MapTile):
 
 class GoldTile(MapTile):
     def __init__(self, tile):
-        super().__init__(tile, 'icons/gold.png')
+        super().__init__(tile, 'tiles/gold.png')
 
     @staticmethod
     def exp_random():
@@ -259,6 +293,15 @@ class GoldTile(MapTile):
         gold_max = self.exp_random() * int(math.sqrt(world_interface.level) * 4)
         gold_min = int(math.sqrt(world_interface.level) * 2)
         world_interface.party_gold += random.randint(gold_min, gold_max)
+        world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
+
+
+class FoodTile(MapTile):
+    def __init__(self, tile):
+        super().__init__(tile, 'tiles/apple.png')
+
+    def on_step(self, world_interface):
+        world_interface.party_food += random.randint(40, 160)
         world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
 
 
@@ -314,6 +357,8 @@ class ShopTile(MapTile):
     def on_step(self, world_interface):
         sm = ShopModal(world_interface)
         sm.activate()
+        world_interface.map.board[world_interface.pc_position] = MapTile(world_interface.pc_position)
+
 
 class WallTile(MapTile):
     def __init__(self, tile):
@@ -331,15 +376,16 @@ class StairTile(MapTile):
         for cr in world_interface.pc_list:
             cr.health += math.ceil((cr.maxhealth - cr.health) * 25 / 100)
         world_interface.level += 1
-        world_interface.save_game()
 
 
 def rand_tile(game_tile, level):
-    empty_ratio = 0.9 / math.sqrt(level)
+    empty_ratio = 0.5 + 0.4 / math.sqrt(level)
     if random.random() < 0.02:
         return ShopTile(game_tile)
-    if random.random() < 0.1:
+    if random.random() < 0.05:
         return GoldTile(game_tile)
+    if random.random() < 0.05:
+        return FoodTile(game_tile)
     if random.random() < empty_ratio:
         return MapTile(game_tile)
     demon_ratio = math.sqrt(max(0, level - 10)) / 10
@@ -408,7 +454,8 @@ TILES = {
     "GobelinTile": GobelinTile,
     "DemonTile": DemonTile,
     "BansheeTile": BansheeTile,
-    "ShopTile": ShopTile
+    "ShopTile": ShopTile,
+    "FoodTile": FoodTile
 }
 
 
@@ -435,7 +482,11 @@ class WorldInterface(Interface, CascadeElement):
 
     def on_return(self, defunct=None):
         self.pc_list = [pc for pc in self.pc_list if pc.health > 0]
-        self.save_game()
+        if not self.pc_list:
+            self.erase_save()
+            game_over = GameOverModal(self)
+            self.desactivate()
+            game_over.activate()
 
     def on_click(self, mouse_pos):
         self.inventory_display.on_click(mouse_pos)
@@ -443,6 +494,7 @@ class WorldInterface(Interface, CascadeElement):
     def new_game(self, slot):
         self.slot = slot
         self.party_gold = 0
+        self.party_food = 400
         self.level = 1
         self.map.level = 1
         self.pc_list = [
@@ -460,6 +512,12 @@ class WorldInterface(Interface, CascadeElement):
     def move(self, key):
         index = int(key) - 4
         new_position = self.pc_position.neighbours()[index]
+        self.party_food -= len(self.pc_list)
+        if self.party_food < 0:
+            self.erase_save()
+            game_over = GameOverModal(self)
+            self.desactivate()
+            game_over.activate()
         if self.map.board[new_position].is_wall:
             return
         self.pc_position = new_position
@@ -474,6 +532,7 @@ class WorldInterface(Interface, CascadeElement):
         self.display()
 
     def start_combat(self, mobs):
+        self.save_game()
         gi = CombatInterface(self, mobs)
         gi.activate()
         self.desactivate()
@@ -484,6 +543,7 @@ class WorldInterface(Interface, CascadeElement):
         save = {
                 'pcs':pc_dump, 
                 'gold':self.party_gold,
+                'food':self.party_food,
                 'level': self.level,
                 'map':self.map.dict_dump(),
                 'inventory_dump': inventory_dump,
@@ -497,7 +557,10 @@ class WorldInterface(Interface, CascadeElement):
         self.done()
 
     def erase_save(self):
-        os.unlink('save%d.json' % self.slot)
+        try:
+            os.unlink('save%d.json' % self.slot)
+        except FileNotFoundError:
+            pass
 
     def load_game(self, slot):
         self.slot = slot
@@ -506,6 +569,7 @@ class WorldInterface(Interface, CascadeElement):
         self.party_gold = d['gold']
         self.pc_position = GameTile.from_string(d['pc_position'])
         self.level = d['level']
+        self.party_food = d['food']
         self.map.level = self.level
         for key in d['inventory_dump']:
             item_class = items.ITEMS[key][0]

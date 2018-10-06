@@ -60,8 +60,8 @@ class TestGametile:
 class TestCreature:
     def test_init(self):
         c = Creature('Archer')
-        assert c.health == 80
-        assert c.maxhealth == 80
+        assert c.health == 60
+        assert c.maxhealth == 60
         assert c.damage == 12
         assert len(c.abilities) == 1
         assert c.abilities[0].name == 'Fire arrow'
@@ -72,7 +72,7 @@ class TestCreature:
 
         c.take_damage(10, 'magic')
 
-        assert c.health == 75
+        assert c.health == 55
 
     def test_move(self):
         c = Creature('Barbarian')

@@ -366,6 +366,7 @@ class StairTile(MapTile):
         world_interface.pc_sprite.rect.x, world_interface.pc_sprite.rect.y = world_interface.pc_position.display_location()
         for cr in world_interface.pc_list:
             cr.health += math.ceil((cr.maxhealth - cr.health) * 25 / 100)
+        world_interface.map.seen = set()
         world_interface.level += 1
 
 
@@ -394,6 +395,7 @@ class WorldMap(CascadeElement):
     def __init__(self, level):
         super().__init__()
         self.board = {}
+        self.seen = set()
         self.level = level
 
     def gen_room(self, tile):
@@ -422,8 +424,10 @@ class WorldMap(CascadeElement):
 
     def update(self, pc_position):
         valid_steps = [step for step, tile in self.board.items() if not tile.is_wall]
-        self.subsprites = [t for k, t in self.board.items() if k.dist(pc_position) < 3.25 and (k == pc_position or
+        seen_tiles = [k for k, t in self.board.items() if k.dist(pc_position) < 3.25 and (k == pc_position or
                             k in pc_position.raycast(k, valid_steps=valid_steps))]
+        self.seen |= set(seen_tiles)
+        self.subsprites = [self.board[k] for k in self.seen]
 
     def dict_dump(self):
         d = {}

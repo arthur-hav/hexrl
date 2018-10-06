@@ -271,7 +271,7 @@ DEFS = {
         'magic_resist': 1,
         'name': 'Fighter',
         'abilities': [
-            ('Smite', {'ability_range':2, 'power':4, 'damagefactor':1, 'health_cost':2, 'cooldown':300, 'need_los':False,}),
+            ('Smite', {'ability_range':2, 'power':16, 'health_cost':2, 'cooldown':300, 'need_los':False,}),
         ],
         'passives': [
             ('Shield', {'shield':5}),
@@ -286,30 +286,30 @@ DEFS = {
         'magic_resist': 1,
         'name': 'Barbarian',
         'passives':[('Regeneration', {'rate': 2, 'maxhealth':25})],
-        'abilities': [('Cleave', {'ability_range':1, 'damagefactor':1, 'cooldown':200})]
+        'abilities': [('Cleave', {'ability_range':1, 'power': 16, 'cooldown':200})]
     },
     'Archer': {
         'portrait': 'portraits/Archer.png',
         'image_name': 'tiles/Archer.png',
-        'health': 80,
-        'damage': 14,
+        'health': 60,
+        'damage': 12,
         'name': 'Archer',
         'passives': [('Quick', {'bonus_moves': 1})],
-        'abilities': [('Arrow', {'ability_range' : 4, 'damagefactor':1, 'need_los' : True,})],
+        'abilities': [('Arrow', {'min_range': 2, 'ability_range': 4, 'power': 14, 'need_los': True,})],
     },
     'Wizard': {
         'portrait': 'portraits/Wizard.png',
         'image_name': 'tiles/Wizard.png',
-        'health': 70,
+        'health': 50,
         'damage': 10,
         'name': 'Wizard',
         'passives':[('Fastcast', {})],
-        'abilities': [('Fireball', {'ability_range' : 3, 'power':5, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':200,})],
+        'abilities': [('Fireball', {'ability_range': 3, 'power': 15, 'aoe':0.75, 'need_los': True, 'cooldown': 200})],
     },
     'Enchantress': {
         'portrait': 'portraits/Elf.png',
         'image_name': 'tiles/Elf.png',
-        'health': 70,
+        'health': 50,
         'damage': 10,
         'name': 'Enchantress',
         'passives':[('PartyHeal', {'amount':5})],
@@ -352,7 +352,7 @@ DEFS = {
         'health': 50,
         'damage': 5,
         'name': 'Skeleton Archer',
-        'abilities': [('Arrow', {'ability_range': 3, 'damagefactor':1, 'need_los' : True,})],
+        'abilities': [('Arrow', {'ability_range': 3, 'power': 6, 'need_los' : True,})],
     },
     'Necromancer': {
         'is_ranged': True,
@@ -372,7 +372,7 @@ DEFS = {
         'damage': 15,
         'name': 'Demon',
         'description': 'Tough opponent',
-        'abilities': [('Fireball', {'ability_range' : 3, 'damagefactor':1, 'aoe':0.75, 'need_los' : True, 'cooldown':300,}),
+        'abilities': [('Fireball', {'ability_range' : 3, 'power': 15, 'aoe':0.75, 'need_los' : True, 'cooldown':300,}),
             ('Call Imp', {'ability_range':1, 'cooldown':600,}) ],
     },
     'Imp': {
@@ -389,8 +389,8 @@ DEFS = {
         'portrait': 'portraits/Necromancer.png',
         'image_name': 'tiles/Banshee.png',
         'health': 70,
-        'damage': 9,
+        'damage': 5,
         'name': 'Banshee',
-        'abilities': [('Scream', {'ability_range': 2, 'damagefactor': 1, 'cooldown': 200, 'duration':300 })],
+        'abilities': [('Scream', {'power': 14, 'ability_range': 2, 'cooldown': 300, 'duration':300 })],
     },
 }

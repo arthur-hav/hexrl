@@ -43,7 +43,7 @@ class BoltAbility(Ability):
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
-        damage = self.power + round(creature.damage * self.damagefactor)
+        damage = self.power
         for tile in creature.tile.raycast(target, go_through=True):
             if tile.dist(creature.tile) > self.ability_range + 0.25:
                 break
@@ -68,7 +68,7 @@ class DamageAbility(Ability):
         if creature.health <= 0:
             creature.health = 1
         target_cr = creature.combat.creatures[target]
-        damage = self.power + round(creature.damage * self.damagefactor)
+        damage = self.power
         target_cr.take_damage(damage, self.damage_type)
         # creature.combat.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
@@ -76,7 +76,7 @@ class DamageAbility(Ability):
 class AoeAbility(DamageAbility):
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
-        damage = round((self.power + creature.damage * self.damagefactor) * self.aoe)
+        damage = round(self.power * self.aoe)
         for tile in target.neighbours():
             splash_cr = creature.combat.creatures.get(tile, None)
             if splash_cr and splash_cr.is_pc != creature.is_pc:
@@ -108,7 +108,7 @@ class NovaAbility(Ability):
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
-        damage = round(creature.damage * self.damagefactor)
+        damage = self.power
         for cr in list(creature.combat.creatures.values()):
             if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
                 cr.take_damage(damage, self.damage_type)
@@ -171,7 +171,7 @@ class ScreamAbility(Ability):
 
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
-        damage = round(creature.damage * self.damagefactor)
+        damage = self.power
         from status import STATUSES
         status_class = STATUSES['Silence'][0]
         status_args = STATUSES['Silence'][1]

@@ -4,24 +4,25 @@ from pygame.locals import *
 from gametile import GameTile
 
 
-def dfs(creature, tile, maxdepth, visited=None):
+def dfs(creature, tile, maxdepth, radius, visited=None):
     if not visited:
         visited = {tile}
     if maxdepth == 0:
         return visited
     for neighb in tile.neighbours():
-        if neighb.in_boundaries() and (neighb not in creature.combat.creatures or creature.combat.creatures[neighb].is_pc):
+        if neighb.in_boundaries(radius) and (neighb not in creature.combat.creatures or creature.combat.creatures[neighb].is_pc):
             visited.add(neighb)
-            dfs(creature, neighb, maxdepth - 1, visited)
+            dfs(creature, neighb, maxdepth - 1, radius, visited)
     return visited
 
 
 class Arena(CascadeElement):
-    def __init__(self):
-        super().__init__(self)
+    def __init__(self, radius):
+        super().__init__()
+        self.radius = radius
         self.board = {}
         self.step_hints = StepHint()
-        for tile in GameTile.all_tiles():
+        for tile in GameTile.all_tiles(radius):
             self.board[tile] = SimpleSprite('tiles/GreyTile.png')
             self.board[tile].rect.move_ip(*tile.display_location())
         self.subsprites = list(self.board.values()) + [self.step_hints]
@@ -31,7 +32,7 @@ class Arena(CascadeElement):
             sprite.animate('tiles/GreyTile.png')
         # Highlight active player
         if creature.is_pc:
-            for tile in dfs(creature, creature.tile, creature.free_moves + 1):
+            for tile in dfs(creature, creature.tile, creature.free_moves + 1, self.radius):
                 self.board[tile].animate('tiles/Green1.png')
         self.board[creature.tile].animate('tiles/Green2.png')
         self.step_hints.update(creature)
@@ -39,7 +40,7 @@ class Arena(CascadeElement):
 
 class InfoDisplay (CascadeElement):
     def __init__ (self, basex, basey):
-        super().__init__(self)
+        super().__init__()
         self.portrait = SimpleSprite('portraits/Fighter.png')
         self.portrait.rect.x, self.portrait.rect.y = basex, basey
 
@@ -289,7 +290,7 @@ class StepHint(CascadeElement):
             return
         self.must_show = True
         for i, neighbour in enumerate(creature.tile.neighbours()):
-            if not neighbour.in_boundaries() or neighbour in creature.combat.creatures:
+            if not neighbour.in_boundaries(creature.combat.MAP_RADIUS) or neighbour in creature.combat.creatures:
                 self.subsprites[i].must_show = False
                 continue
             x, y = neighbour.display_location()
@@ -303,7 +304,7 @@ class HoverXair(SimpleSprite):
         self.tile = None
 
     def display(self):
-        if not self.tile or not self.tile.in_boundaries():
+        if not self.tile:
             return
         self.rect.x, self.rect.y = self.tile.display_location()
         super().display()
@@ -443,8 +444,8 @@ class QuitInterface(Interface, CascadeElement):
 
 class GameUI(CascadeElement):
     def __init__(self, combat):
-        super().__init__(self)
-        self.arena = Arena()
+        super().__init__()
+        self.arena = Arena(combat.MAP_RADIUS)
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.hover_display = InfoDisplay(18, 90)
         self.log_display = LogDisplay()

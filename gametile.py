@@ -3,7 +3,6 @@ from math import cos, pi, sqrt
 
 class GameTile:
     CO = cos(pi / 6)
-    MAP_RADIUS = 6.4
 
     def __init__(self, x, y):
         self.x = x
@@ -23,8 +22,8 @@ class GameTile:
             self + GameTile(1, -0.5),
         ]
 
-    def in_boundaries(self):
-        return self.dist(GameTile(0, 0)) < self.MAP_RADIUS
+    def in_boundaries(self, radius):
+        return self.dist(GameTile(0, 0)) < radius
 
     def __add__(self, other):
         """Tiles are vectors and can as well express steps, can be added etc."""
@@ -58,8 +57,7 @@ class GameTile:
 
         while True:
             forward_tiles = [n for n in current_tile.neighbours() if n._dist_to_axis(d0, dx, dy, c) < 0.5001
-                             and n.dist(other) < current_tile.dist(other)
-                             and n.in_boundaries()]
+                             and n.dist(other) < current_tile.dist(other)]
             for tile in forward_tiles:
                 yield tile
             for forward_tile in forward_tiles.copy():
@@ -94,9 +92,9 @@ class GameTile:
         return GameTile(x, y)
 
     @staticmethod
-    def all_tiles():
-        for i in range(-8, 8):
-            for j in range(-8, 8):
+    def all_tiles(radius):
+        for i in range(-int(radius + 1), int(radius+ 1)):
+            for j in range(-int(radius + 1), int(radius+ 1)):
                 tile = GameTile(i, j + (i % 2)/2)
-                if tile.in_boundaries():
+                if tile.in_boundaries(radius):
                     yield tile

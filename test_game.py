@@ -8,6 +8,7 @@ import mock
 class FakeCombat:
     def __init__(self):
         self.creatures = {}
+        self.MAP_RADIUS = 5.4
 
 
 class TestGametile:
@@ -143,6 +144,7 @@ class TestCombat:
     def test_targets(self):
         c1 = Creature('Archer', is_pc=True)
         g = Combat([(c1, (0, -3))], ['Skeleton'])
+
 
         targets = g.get_valid_targets(c1, c1.abilities[0])
 

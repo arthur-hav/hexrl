@@ -154,7 +154,7 @@ class Creature(SimpleSprite, CascadeElement):
             return None
 
     def move_or_attack(self, destination):
-        if not destination.in_boundaries():
+        if not destination.in_boundaries(self.combat.MAP_RADIUS):
             return
         if destination in self.combat.creatures and self.is_pc != self.combat.creatures[destination].is_pc:
             return self.attack(destination)
@@ -233,7 +233,7 @@ class Creature(SimpleSprite, CascadeElement):
         # FLEEING
         if self.is_ranged and self.tile.dist(nearest_pc.tile) < 2.25:
             tile = self.step_away(nearest_pc.tile)
-            if tile and tile.in_boundaries() and not self.rooted:
+            if tile and tile.in_boundaries(self.combat.MAP_RADIUS) and not self.rooted:
                 self.move_or_attack(tile)
                 return
         # CASTING

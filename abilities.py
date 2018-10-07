@@ -53,7 +53,11 @@ class BoltAbility(Ability):
                 # target_cr.game.dmg_log_display.push_line(creature.image_name, self.image_name, damage)
 
     def splash_hint(self, creature, selected, target):
-        return target in creature.tile.raycast(selected, go_through=True) and self.range_hint(creature, target)
+        for tile in creature.tile.raycast(target, go_through=True):
+            if tile.dist(creature.tile) > self.ability_range + 0.25:
+                return False
+            if tile == target:
+                return True
 
 
 class DamageAbility(Ability):

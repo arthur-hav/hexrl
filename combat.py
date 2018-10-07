@@ -5,6 +5,7 @@ import random
 
 
 class Combat(CascadeElement):
+    MAP_RADIUS = 6.4
     def __init__(self, pc_list, mob_list):
         super().__init__()
         self.creatures = {}
@@ -22,7 +23,7 @@ class Combat(CascadeElement):
                 pc.set_in_combat(self, GameTile(*gt), i)
             i += 2
         i = 1
-        mob_zone = [gt for gt in GameTile.all_tiles() if gt.y < -3.25]
+        mob_zone = [gt for gt in GameTile.all_tiles(self.MAP_RADIUS) if gt.y < -3.25]
         for mobdef in mobs:
             gt = random.choice(mob_zone)
             mob_zone.remove(gt)
@@ -50,15 +51,15 @@ class Combat(CascadeElement):
         return all((c.is_pc for c in self.creatures.values())) or all((not c.is_pc for c in self.creatures.values()))
 
     def get_valid_targets(self, creature, ability):
-        valid_targets = [tile for tile in GameTile.all_tiles() if ability.is_valid_target(creature, tile)]
+        valid_targets = [tile for tile in GameTile.all_tiles(self.MAP_RADIUS) if ability.is_valid_target(creature, tile)]
         return valid_targets
 
     def get_range_hint(self, creature, ability):
-        valid_range = [tile for tile in GameTile.all_tiles() if ability.range_hint(creature, tile)]
+        valid_range = [tile for tile in GameTile.all_tiles(self.MAP_RADIUS) if ability.range_hint(creature, tile)]
         return valid_range
 
     def get_splash_hint(self, creature, ability, selected):
-        valid_range = [tile for tile in GameTile.all_tiles() if ability.splash_hint(creature, selected, tile)]
+        valid_range = [tile for tile in GameTile.all_tiles(self.MAP_RADIUS) if ability.splash_hint(creature, selected, tile)]
         return valid_range
     
     def apply_ability(self, ability, creature, target):

@@ -79,15 +79,23 @@ class CombatInterface (Interface):
         self.selected = None
         super().__init__(father, keys=[
             ('[1-3]', self.ability,),
-            ('[4-9]', self.go),
+            ('(up|down)(left|right)?', self.go),
             ('0', self.pass_turn),
             ('\?', self.disp_help),
             (K_ESCAPE, self.quit)])
 
     def go(self, code):
-        index = int(code) - 4
         if not self.combat.to_act or not self.combat.to_act.is_pc:
             return
+        moves = {
+            'down': 1,
+            'downleft': 0,
+            'downright': 2,
+            'up': 4,
+            'upright': 5,
+            'upleft': 3
+        }
+        index = moves[code]
         self.combat.to_act.move_or_attack(self.combat.to_act.tile.neighbours()[index])
         self.combat.new_turn()
         if self.combat.is_over():

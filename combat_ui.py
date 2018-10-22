@@ -21,21 +21,18 @@ class Arena(CascadeElement):
         super().__init__()
         self.radius = radius
         self.board = {}
-        self.step_hints = StepHint()
         for tile in GameTile.all_tiles(radius):
             self.board[tile] = SimpleSprite('tiles/GreyTile.png')
             self.board[tile].rect.move_ip(*tile.display_location())
-        self.subsprites = list(self.board.values()) + [self.step_hints]
+        self.subsprites = list(self.board.values())
 
     def update(self, creature):
         for sprite in self.board.values():
             sprite.animate('tiles/GreyTile.png')
-        # Highlight active player
         if creature.is_pc:
             for tile in dfs(creature, creature.tile, creature.free_moves + 1, self.radius):
                 self.board[tile].animate('tiles/Green1.png')
         self.board[creature.tile].animate('tiles/Green2.png')
-        self.step_hints.update(creature)
 
 
 class InfoDisplay (CascadeElement):
@@ -320,9 +317,7 @@ class HelpInterface(Interface, CascadeElement):
             (K_ESCAPE, self.cancel),
             ])
         t = Tooltip()
-        t.set_text("""The combat mostly plays with numpad. 
-Use [4-9] to move or attack adjacent tile.
-Use special abilities with numpad [1-3], confirm target with mouse click or [1-9].
+        t.set_text("""Use special abilities with numpad [1-3], confirm target with mouse click or [1-9].
 Press [0] to idle for half a turn.
 Press [Esc] to cancel or quit.""")
         self.subsprites = [t]
@@ -358,7 +353,6 @@ class TargetInterface(Interface):
         self.valid_targets = valid_targets
         self.ability = ability
         self.father.combat_ui.cursor.animate('icons/target-cursor.png')
-        self.father.combat_ui.arena.step_hints.must_show = False
         self.updates = 0
 
     def cancel(self, key):
@@ -410,12 +404,10 @@ class TargetInterface(Interface):
         self.target = GameTile.get_tile_for_mouse(mouse_pos)
         if self.target and self.target in self.valid_targets:
             self.father.combat.selected = None
-            self.father.combat_ui.arena.step_hints.must_show = True
             self.done()
 
     def confirm(self):
         self.father.combat.selected = None
-        self.father.combat_ui.arena.step_hints.must_show = True
         self.done()
 
 

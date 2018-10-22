@@ -8,7 +8,7 @@ import mock
 class FakeCombat:
     def __init__(self):
         self.creatures = {}
-        self.MAP_RADIUS = 5.4
+        self.MAP_RADIUS = 4.4
 
 
 class TestGametile:

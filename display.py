@@ -55,7 +55,14 @@ class Display:
         #Display The Background
         pygame.display.flip()
 
+    def handle_key(self, key, unicode):
+        for k, handlers in list(self.key_handlers.items()):
+            for handler in handlers:
+                if (isinstance(k, str) and re.match(k, unicode)) or k == key:
+                    handler(unicode)
+
     def main(self):
+        pressed_dirs = set()
         while True:
             pygame.display.flip()
             # Handle Input Events
@@ -64,10 +71,30 @@ class Display:
                 if event.type == QUIT:
                     exit(0)
                 elif event.type == KEYDOWN:
-                    for k, handlers in list(self.key_handlers.items()):
-                        for handler in handlers:
-                            if (isinstance(k, str) and re.match(k, event.unicode)) or k == event.key:
-                                handler(event.unicode)
+                    if event.key in (K_DOWN, K_UP, K_LEFT, K_RIGHT):
+                        pressed_dirs.add(event.key)
+                    else:
+                        self.handle_key(event.key, event.unicode)
+                elif event.type == KEYUP:
+                    if len(pressed_dirs) == 1 and event.key == K_DOWN:
+                        self.handle_key(event.key, 'down')
+                    elif len(pressed_dirs) == 1 and event.key == K_UP:
+                        self.handle_key(event.key, 'up')
+                    elif event.key in (K_DOWN, K_UP, K_LEFT, K_RIGHT):
+                        direction = None
+                        if K_DOWN in pressed_dirs and K_LEFT in pressed_dirs:
+                            direction = "downleft"
+                        elif K_DOWN in pressed_dirs and K_RIGHT in pressed_dirs:
+                            direction = "downright"
+                        elif K_UP in pressed_dirs and K_LEFT in pressed_dirs:
+                            direction = "upleft"
+                        elif K_UP in pressed_dirs and K_RIGHT in pressed_dirs:
+                            direction = "upright"
+                        if direction:
+                            pressed_dirs = set()
+                            self.handle_key(event.key, direction)
+                    if event.key in pressed_dirs:
+                        pressed_dirs.remove(event.key)
                 elif event.type == MOUSEBUTTONDOWN:
                     for handler in self.mouse_handlers:
                         handler(pos)

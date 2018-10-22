@@ -471,7 +471,7 @@ class WorldInterface(Interface, CascadeElement):
         self.subsprites = [self.bg, self.inventory_display, self.map, self.pc_sprite, self.cursor]
         self.formation = [ (-2, 4), (-1, 4.5), (0, 4), (1, 4.5), (2, 4), ]
         Interface.__init__(self, father, keys=[
-            ('[4-9]', self.move),
+            ('(up|down)(left|right)?', self.move),
             (K_ESCAPE, self.quit),
             ])
 
@@ -505,7 +505,15 @@ class WorldInterface(Interface, CascadeElement):
         pass
 
     def move(self, key):
-        index = int(key) - 4
+        moves = {
+            'down': 1,
+            'downleft': 0,
+            'downright': 2,
+            'up': 4,
+            'upright': 5,
+            'upleft': 3
+        }
+        index = moves[key]
         new_position = self.pc_position.neighbours()[index]
         if self.map.board[new_position].is_wall:
             return

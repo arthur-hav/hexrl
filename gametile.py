@@ -93,8 +93,8 @@ class GameTile:
 
     @staticmethod
     def all_tiles(radius):
-        for i in range(-int(radius + 1), int(radius+ 1)):
-            for j in range(-int(radius + 1), int(radius+ 1)):
-                tile = GameTile(i, j + (i % 2)/2)
+        for i in range(-int(radius + 2), int(radius + 2)):
+            for j in range(-int(radius + 2), int(radius + 2)):
+                tile = GameTile(i, j + (i % 2) / 2)
                 if tile.in_boundaries(radius):
                     yield tile

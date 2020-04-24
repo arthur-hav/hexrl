@@ -5,7 +5,8 @@ import random
 
 
 class Combat(CascadeElement):
-    MAP_RADIUS = 6.4
+    MAP_RADIUS = 5.4
+
     def __init__(self, pc_list, mob_list):
         super().__init__()
         self.creatures = {}
@@ -23,7 +24,7 @@ class Combat(CascadeElement):
                 pc.set_in_combat(self, GameTile(*gt), i)
             i += 2
         i = 1
-        mob_zone = [gt for gt in GameTile.all_tiles(self.MAP_RADIUS) if gt.y < -3.25]
+        mob_zone = [gt for gt in GameTile.all_tiles(self.MAP_RADIUS) if gt.y < -3.2]
         for mobdef in mobs:
             gt = random.choice(mob_zone)
             mob_zone.remove(gt)
@@ -72,17 +73,12 @@ class Combat(CascadeElement):
 
 
 class CombatInterface (Interface):
-    def __init__ (self, father, mob_list):
+    def __init__(self, father, mob_list):
         self.combat = Combat(zip(father.pc_list, father.formation), mob_list)
         self.combat.new_turn()
         self.combat_ui = GameUI(self.combat)
         self.selected = None
-        super().__init__(father, keys=[
-            ('[1-3]', self.ability,),
-            ('(up|down)(left|right)?', self.go),
-            ('0', self.pass_turn),
-            ('\?', self.disp_help),
-            (K_ESCAPE, self.quit)])
+        super().__init__(father, keys=[(K_ESCAPE, self.quit)])
 
     def go(self, code):
         if not self.combat.to_act or not self.combat.to_act.is_pc:
@@ -160,7 +156,10 @@ class CombatInterface (Interface):
             return
         self.combat_ui.to_act_display.update(self.combat)
         if not self.combat.to_act.is_pc and self.combat_ui.game_frame == 5:
-            self.combat.to_act.ai_play()
+            self.combat.to_act.ai_play(False)
+        elif self.combat.to_act.is_pc and self.combat_ui.game_frame == 5:
+            self.combat.to_act.ai_play(True)
+            self.combat.new_turn()
         elif self.combat_ui.game_frame > 10:
             self.combat.new_turn()
             self.combat_ui.game_frame = 0

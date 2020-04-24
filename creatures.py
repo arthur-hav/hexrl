@@ -227,8 +227,8 @@ class Creature(SimpleSprite, CascadeElement):
             del self.combat.creatures[self.tile]
             self.must_show = False
 
-    def ai_play(self):
-        nearest_pc = min([c for c in self.combat.creatures.values() if c.is_pc],
+    def ai_play(self, is_pc):
+        nearest_pc = min([c for c in self.combat.creatures.values() if c.is_pc != is_pc],
                          key=lambda x: x.tile.dist(self.tile))
         # FLEEING
         if self.is_ranged and self.tile.dist(nearest_pc.tile) < 2.25:

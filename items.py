@@ -95,7 +95,7 @@ class HealthElixir(Consumable):
 
 ITEMS = {
     'Life pendant': (StatsItem, ('Life pendant', 'tiles/AmuletOfHealth.png', 100, { 'health': 20, 'maxhealth': 20 })),
-    'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':2, 'cooldown': 200} )),
+    'Lightfoot amulet': (AbilityItem, ('Lightfoot amulet','tiles/AmuletOfSpeed.png', 50, 'Blink',{'ability_range':5, 'cooldown': 300} )),
     'Bloodluster': (AbilityItem, ('Bloodluster','tiles/AmuletRubis.png', 200, 'Bloodlust', {'ability_range':0, 'cooldown':700, 'duration': 250, 'is_instant': True,})),
     'Thunder clap': (AbilityItem, ('Thunder clap', 'tiles/WandBlue.png', 150, 'Lightning', {'ability_range': 6, 'cooldown': 400, 'damagefactor':1})),
     'Protector': (AbilityItem, ('Protector', 'tiles/AmuletSaphir.png', 180, 'Shield', {'ability_range': 2, 'cooldown': 400, 'power':20})),

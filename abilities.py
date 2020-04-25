@@ -1,4 +1,5 @@
 from display import SimpleSprite
+from gametile import GameTile
 import random
 
 
@@ -165,12 +166,30 @@ class TeleportAbility(Ability):
     def is_valid_target(self, creature, target):
         return self.range_hint(creature, target) and target not in creature.combat.creatures
 
+    @classmethod
+    def _dist_nearest_enemy(cls, creature, tile):
+        nearest_pc = min([c for c in creature.combat.creatures.values() if c.is_pc != creature.is_pc],
+                         key=lambda x: x.tile.dist(tile))
+        return nearest_pc.tile.dist(tile)
+
     def apply_ability(self, creature, target):
         super().apply_ability(creature, target)
         creature.combat.creatures[target] = creature
         del creature.combat.creatures[creature.tile]
         creature.tile = target
         creature.rect.x, creature.rect.y = creature.tile.display_location()
+
+    def get_ai_valid_target(self, creature):
+        valid_tiles = [t for t in GameTile.all_tiles(creature.combat.MAP_RADIUS) if self.is_valid_target(creature, t)]
+
+        if creature.is_ranged:
+            for cr in list(creature.combat.creatures.values()):
+                if creature.tile.dist(cr.tile) < 2.25 and creature.is_pc != cr.is_pc:
+                    return max(valid_tiles, key=lambda x: self._dist_nearest_enemy(creature, x))
+        else:
+            for cr in list(creature.combat.creatures.values()):
+                if creature.tile.dist(cr.tile) < self.ability_range + 1 and creature.is_pc != cr.is_pc:
+                    return min(valid_tiles, key=lambda x: self._dist_nearest_enemy(creature, x))
 
 
 class EnnemyStatusAbility(StatusAbility):

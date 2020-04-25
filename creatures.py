@@ -52,6 +52,7 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = None
         self.combat = None
         self.moving_from = None
+        self.next_action = None
         self.moving_frame = 0
         self.shield = 0
         self.is_pc = is_pc
@@ -233,12 +234,6 @@ class Creature(SimpleSprite, CascadeElement):
     def ai_play(self, is_pc):
         nearest_pc = min([c for c in self.combat.creatures.values() if c.is_pc != is_pc],
                          key=lambda x: x.tile.dist(self.tile))
-        # FLEEING
-        if self.is_ranged and self.tile.dist(nearest_pc.tile) < 2.25:
-            tile = self.step_away(nearest_pc.tile)
-            if tile and tile.in_boundaries(self.combat.MAP_RADIUS) and not self.rooted:
-                self.move_or_attack(tile)
-                return
         # CASTING
         if self.abilities and not self.silenced:
             ability = random.choice(self.abilities)
@@ -247,6 +242,12 @@ class Creature(SimpleSprite, CascadeElement):
                 if target:
                     self.use_ability(ability, target)
                     return
+        # FLEEING
+        if self.is_ranged and self.tile.dist(nearest_pc.tile) < 2.25:
+            tile = self.step_away(nearest_pc.tile)
+            if tile and tile.in_boundaries(self.combat.MAP_RADIUS) and not self.rooted:
+                self.move_or_attack(tile)
+                return
         # HUNTING
         if (not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25) and (not self.is_ranged or nearest_pc.tile.dist(self.tile) > 3.25):
             tile = self.step_to(nearest_pc.tile)

@@ -1,4 +1,5 @@
 from display import SimpleSprite
+import random
 
 
 class Ability(SimpleSprite):
@@ -34,6 +35,10 @@ class Ability(SimpleSprite):
     def tick(self, creature, elapsed_time):
         self.current_cooldown = max(0, self.current_cooldown - elapsed_time)
 
+    def get_ai_valid_target(self, creature):
+        valid_targets = creature.combat.get_valid_targets(creature, self)
+        if valid_targets:
+            return random.choice(valid_targets)
 
 class BoltAbility(Ability):
     def is_valid_target(self, creature, target):
@@ -120,6 +125,12 @@ class NovaAbility(Ability):
 
     def splash_hint(self, creature, selected, target):
         return self.range_hint(creature, target)
+
+    def get_ai_valid_target(self, creature):
+        for cr in list(creature.combat.creatures.values()):
+            if creature.tile.dist(cr.tile) < self.ability_range + 0.25 and creature.is_pc != cr.is_pc:
+                return creature.tile
+
 
 class Invocation(Ability):
 

@@ -155,12 +155,12 @@ class CombatInterface (Interface):
             self.done()
             return
         self.combat_ui.to_act_display.update(self.combat)
-        if not self.combat.to_act.is_pc and self.combat_ui.game_frame == 5:
+        if not self.combat.to_act.is_pc and self.combat_ui.game_frame == 3:
             self.combat.to_act.ai_play(False)
-        elif self.combat.to_act.is_pc and self.combat_ui.game_frame == 5:
+        elif self.combat.to_act.is_pc and self.combat_ui.game_frame == 3:
             self.combat.to_act.ai_play(True)
             self.combat.new_turn()
-        elif self.combat_ui.game_frame > 10:
+        elif self.combat_ui.game_frame > 6:
             self.combat.new_turn()
             self.combat_ui.game_frame = 0
 

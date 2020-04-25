@@ -82,19 +82,7 @@ class TestCreature:
         c.move_or_attack(GameTile(0, 1))
 
         assert c.tile == GameTile(0, 1)
-        assert c.free_moves == 0
         assert c.next_action == 0
-
-    def test_two_move(self):
-        c = Creature('Barbarian')
-        c.set_in_combat(FakeCombat(), GameTile(0, 0), 0)
-
-        c.move_or_attack(GameTile(0, 1))
-        c.move_or_attack(GameTile(0, 2))
-
-        assert c.tile == GameTile(0, 2)
-        assert c.free_moves == 1
-        assert c.next_action == 100
 
     def test_attack(self):
         f = FakeCombat()

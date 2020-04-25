@@ -29,9 +29,6 @@ class Arena(CascadeElement):
     def update(self, creature):
         for sprite in self.board.values():
             sprite.animate('tiles/GreyTile.png')
-        if creature.is_pc:
-            for tile in dfs(creature, creature.tile, creature.free_moves + 1, self.radius):
-                self.board[tile].animate('tiles/Green1.png')
         self.board[creature.tile].animate('tiles/Green2.png')
 
 

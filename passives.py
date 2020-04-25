@@ -86,10 +86,7 @@ class Fastcast(Passive):
             old_use(ability, target)
             if old_ability_instant:
                 return
-            if creature.free_moves:
-                creature.free_moves -= 1
-            else:
-                creature.end_act()
+            creature.end_act()
             ability.is_instant = old_ability_instant
         creature.use_ability = use_ability
 
@@ -103,7 +100,6 @@ class Fastcast(Passive):
 class Quick(Passive):
     def apply_to(self, creature):
         total_moves = self.bonus_moves + 1
-        creature.FREE_MOVES = total_moves
 
     def get_short_desc(self):
         return 'Quick %d' % self.bonus_moves

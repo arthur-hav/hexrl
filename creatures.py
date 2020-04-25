@@ -33,7 +33,7 @@ class SideShieldGauge(Gauge):
 
 
 class Creature(SimpleSprite, CascadeElement):
-    FREE_MOVES = 1
+
     def __init__(self, defkey, is_pc=False):
         CascadeElement.__init__(self)
         self.is_ranged = False
@@ -51,8 +51,8 @@ class Creature(SimpleSprite, CascadeElement):
         self.frames = []
         self.tile = None
         self.combat = None
-        self.next_action = 0
-        self.free_moves = self.FREE_MOVES
+        self.moving_from = None
+        self.moving_frame = 0
         self.shield = 0
         self.is_pc = is_pc
         self.defkey = defkey
@@ -86,7 +86,6 @@ class Creature(SimpleSprite, CascadeElement):
         self.combat.creatures[game_tile] = self
         self.next_action = next_action
         self.shield = 0
-        self.free_moves = self.FREE_MOVES
         self.status = []
 
     def end_combat(self):
@@ -99,6 +98,14 @@ class Creature(SimpleSprite, CascadeElement):
         self.tile = None
 
     def update(self):
+        if self.moving_from:
+            self.moving_frame += 1
+            old_x, old_y = self.moving_from.display_location()
+            new_x, new_y = self.tile.display_location()
+            self.move_to(old_x + (new_x - old_x) * self.moving_frame / 3, old_y + (new_y - old_y) * self.moving_frame / 3)
+            if self.moving_frame >= 3:
+                self.moving_from = None
+                self.moving_frame = 0
         if self.frames:
             self.animate(self.frames.pop(0))
         self.health_gauge.update()
@@ -163,26 +170,22 @@ class Creature(SimpleSprite, CascadeElement):
         elif destination in self.combat.creatures:
             # Swap places
             other_cr = self.combat.creatures[destination]
+            other_cr.moving_from = other_cr.tile
             other_cr.tile = self.tile
-            other_cr.rect.x, other_cr.rect.y = other_cr.tile.display_location()
             other_cr.combat.creatures[self.tile] = other_cr
             del self.combat.creatures[destination]
         else:
             del self.combat.creatures[self.tile]
+        self.moving_from = self.tile
         self.tile = destination
-        self.rect.x, self.rect.y = self.tile.display_location()
         self.combat.creatures[destination] = self
-        if self.free_moves:
-            self.free_moves -= 1
-        else:
-            self.end_act()
+        self.end_act()
 
     def idle(self):
         self.end_act()
 
     def end_act(self):
         self.next_action += 100
-        self.free_moves = self.FREE_MOVES
 
     def attack(self, destination):
         creature = self.combat.creatures[destination]
@@ -240,9 +243,8 @@ class Creature(SimpleSprite, CascadeElement):
         if self.abilities and not self.silenced:
             ability = random.choice(self.abilities)
             if ability.current_cooldown == 0:
-                valid_targets = self.combat.get_valid_targets(self, ability)
-                if valid_targets:
-                    target = random.choice(valid_targets)
+                target = ability.get_ai_valid_target(self)
+                if target:
                     self.use_ability(ability, target)
                     return
         # HUNTING
@@ -289,6 +291,7 @@ DEFS = {
         'abilities': [('Cleave', {'ability_range':1, 'power': 16, 'cooldown':200})]
     },
     'Archer': {
+        'is_ranged': True,
         'portrait': 'portraits/Archer.png',
         'image_name': 'tiles/Archer.png',
         'health': 60,
@@ -298,6 +301,7 @@ DEFS = {
         'abilities': [('Arrow', {'min_range': 2, 'ability_range': 4, 'power': 14, 'need_los': True,})],
     },
     'Wizard': {
+        'is_ranged': True,
         'portrait': 'portraits/Wizard.png',
         'image_name': 'tiles/Wizard.png',
         'health': 50,
@@ -307,6 +311,7 @@ DEFS = {
         'abilities': [('Fireball', {'ability_range': 3, 'power': 15, 'aoe':0.75, 'need_los': True, 'cooldown': 200})],
     },
     'Enchantress': {
+        'is_ranged': True,
         'portrait': 'portraits/Elf.png',
         'image_name': 'tiles/Elf.png',
         'health': 50,

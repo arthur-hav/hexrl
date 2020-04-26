@@ -36,7 +36,7 @@ class Creature(SimpleSprite, CascadeElement):
 
     def __init__(self, defkey, is_pc=False):
         CascadeElement.__init__(self)
-        self.is_ranged = False
+        self.attack_range = 1
         self.health = 0
         self.maxhealth = 0
         self.damage = 0
@@ -103,7 +103,8 @@ class Creature(SimpleSprite, CascadeElement):
             self.moving_frame += 1
             old_x, old_y = self.moving_from.display_location()
             new_x, new_y = self.tile.display_location()
-            self.move_to(old_x + (new_x - old_x) * self.moving_frame / 3, old_y + (new_y - old_y) * self.moving_frame / 3)
+            self.move_to(old_x + (new_x - old_x) * self.moving_frame / 3,
+                         old_y + (new_y - old_y) * self.moving_frame / 3)
             if self.moving_frame >= 3:
                 self.moving_from = None
                 self.moving_frame = 0
@@ -119,16 +120,16 @@ class Creature(SimpleSprite, CascadeElement):
             item.unequip()
         d = {
             'items': [item.name for item in items],
-            'health':self.health,
-            'maxhealth':self.maxhealth,
-            'damage':self.damage,
-            'defkey':self.defkey
-            }
+            'health': self.health,
+            'maxhealth': self.maxhealth,
+            'damage': self.damage,
+            'defkey': self.defkey
+        }
         for item in items:
             item.equip(self)
         return d
 
-    @staticmethod 
+    @staticmethod
     def dict_load(data, items):
         c = Creature(data['defkey'])
         c.health = data['health']
@@ -143,7 +144,7 @@ class Creature(SimpleSprite, CascadeElement):
             item.equip(c)
         c.is_pc = True
         return c
-    
+
     # Below this : only valid if previously set_in_combat
 
     def tick(self, elapsed_time):
@@ -157,7 +158,8 @@ class Creature(SimpleSprite, CascadeElement):
 
     def step_away(self, target):
         try:
-            return max([t for t in self.tile.neighbours() if t not in self.combat.creatures], key=lambda x: x.dist(target))
+            return max([t for t in self.tile.neighbours() if t not in self.combat.creatures],
+                       key=lambda x: x.dist(target))
         except ValueError:
             return None
 
@@ -232,8 +234,8 @@ class Creature(SimpleSprite, CascadeElement):
             self.must_show = False
 
     def ai_play(self, is_pc):
-        nearest_pc = min([c for c in self.combat.creatures.values() if c.is_pc != is_pc],
-                         key=lambda x: x.tile.dist(self.tile))
+        nearest_ennemy = min([c for c in self.combat.creatures.values() if c.is_pc != is_pc and c.health > 0],
+                             key=lambda x: x.tile.dist(self.tile))
         # CASTING
         if self.abilities and not self.silenced:
             ability = random.choice(self.abilities)
@@ -242,17 +244,23 @@ class Creature(SimpleSprite, CascadeElement):
                 if target:
                     self.use_ability(ability, target)
                     return
+
         # FLEEING
-        if self.is_ranged and self.tile.dist(nearest_pc.tile) < 2.25:
-            tile = self.step_away(nearest_pc.tile)
+        if self.attack_range > 1 and self.tile.dist(nearest_ennemy.tile) < 2.25:
+            tile = self.step_away(nearest_ennemy.tile)
             if tile and tile.in_boundaries(self.combat.MAP_RADIUS) and not self.rooted:
                 self.move_or_attack(tile)
                 return
         # HUNTING
-        if (not self.rooted or nearest_pc.tile.dist(self.tile) < 1.25) and (not self.is_ranged or nearest_pc.tile.dist(self.tile) > 3.25):
-            tile = self.step_to(nearest_pc.tile)
+        if (not self.rooted or nearest_ennemy.tile.dist(self.tile) < 1.25) and (
+                self.attack_range == 1 or nearest_ennemy.tile.dist(self.tile) > self.attack_range):
+            if nearest_ennemy.tile.dist(self.tile) <= self.attack_range:
+                self.attack(nearest_ennemy.tile)
+                return
+            tile = self.step_to(nearest_ennemy.tile)
             # Only swap position with a lesser hp ally to avoid dancing
-            if tile not in self.combat.creatures or self.combat.creatures[tile].is_pc != self.is_pc or self.combat.creatures[tile].health < self.health:
+            if tile not in self.combat.creatures or self.combat.creatures[tile].is_pc != self.is_pc or \
+                    self.combat.creatures[tile].health < self.health:
                 self.move_or_attack(tile)
                 return
         # IDLE
@@ -270,14 +278,15 @@ DEFS = {
         'image_name': 'tiles/Fighter.png',
         'health': 100,
         'damage': 14,
-        'armor':2,
+        'armor': 2,
         'magic_resist': 1,
+        'attack_range': 1,
         'name': 'Fighter',
         'abilities': [
-            ('Smite', {'ability_range':2, 'power':16, 'health_cost':2, 'cooldown':300, 'need_los':False,}),
+            ('Smite', {'ability_range': 2, 'power': 16, 'health_cost': 2, 'cooldown': 300, 'need_los': False, }),
         ],
         'passives': [
-            ('Shield', {'shield':5}),
+            ('Shield', {'shield': 5}),
         ]
     },
     'Barbarian': {
@@ -285,41 +294,42 @@ DEFS = {
         'image_name': 'tiles/Barbarian.png',
         'health': 90,
         'damage': 16,
-        'armor':1,
+        'armor': 1,
         'magic_resist': 1,
+        'attack_range': 1,
         'name': 'Barbarian',
-        'passives':[('Regeneration', {'rate': 2, 'maxhealth':25})],
-        'abilities': [('Cleave', {'ability_range':1, 'power': 16, 'cooldown':200})]
+        'passives': [('Regeneration', {'rate': 2, 'maxhealth': 25})],
+        'abilities': [('Cleave', {'ability_range': 1, 'power': 16, 'cooldown': 200})]
     },
     'Archer': {
-        'is_ranged': True,
         'portrait': 'portraits/Archer.png',
         'image_name': 'tiles/Archer.png',
         'health': 60,
         'damage': 12,
+        'attack_range': 4,
         'name': 'Archer',
-        'passives': [('Quick', {'bonus_moves': 1})],
-        'abilities': [('Arrow', {'min_range': 2, 'ability_range': 4, 'power': 14, 'need_los': True,})],
+        'passives': [],
+        'abilities': [],
     },
     'Wizard': {
-        'is_ranged': True,
         'portrait': 'portraits/Wizard.png',
         'image_name': 'tiles/Wizard.png',
         'health': 50,
         'damage': 10,
+        'attack_range': 3,
         'name': 'Wizard',
-        'passives':[('Fastcast', {})],
-        'abilities': [('Fireball', {'ability_range': 3, 'power': 15, 'aoe':0.75, 'need_los': True, 'cooldown': 200})],
+        'passives': [('Fastcast', {})],
+        'abilities': [('Fireball', {'ability_range': 3, 'power': 15, 'aoe': 0.75, 'need_los': True, 'cooldown': 200})],
     },
     'Enchantress': {
-        'is_ranged': True,
         'portrait': 'portraits/Elf.png',
         'image_name': 'tiles/Elf.png',
         'health': 50,
         'damage': 10,
+        'attack_range': 3,
         'name': 'Enchantress',
-        'passives':[('PartyHeal', {'amount':5})],
-        'abilities': [('Root', {'ability_range':4, 'cooldown':200, 'duration': 300, 'need_los': True})],
+        'passives': [('PartyHeal', {'amount': 5})],
+        'abilities': [('Root', {'ability_range': 4, 'cooldown': 200, 'duration': 300, 'need_los': True})],
     },
 
     'Gobelin': {
@@ -335,11 +345,11 @@ DEFS = {
         'portrait': 'portraits/Gobelin.png',
         'image_name': 'tiles/Troll.png',
         'health': 70,
-        'armor':3,
+        'armor': 3,
         'damage': 12,
         'name': 'Troll',
         'abilities': [],
-        'passives':[('Regeneration', {'rate': 6, 'maxhealth':None})]
+        'passives': [('Regeneration', {'rate': 6, 'maxhealth': None})]
     },
     'Skeleton': {
         'portrait': 'portraits/Skeleton.png',
@@ -351,35 +361,35 @@ DEFS = {
         'abilities': [],
     },
     'SkeletonArcher': {
-        'is_ranged': True,
         'portrait': 'portraits/Skeleton.png',
         'image_name': 'tiles/SkeletonArcher.png',
         'description': 'Ranged',
         'health': 50,
+        'attack_range': 3,
         'damage': 5,
         'name': 'Skeleton Archer',
-        'abilities': [('Arrow', {'ability_range': 3, 'power': 6, 'need_los' : True,})],
+        'abilities': [],
     },
     'Necromancer': {
-        'is_ranged': True,
         'portrait': 'portraits/Necromancer.png',
         'image_name': 'tiles/Necromancer.png',
         'health': 70,
         'damage': 7,
         'name': 'Necromancer',
+        'attack_range': 3,
         'description': 'Can raise undead',
-        'abilities': [('Raise Undead', {'ability_range':2, 'cooldown':300,})],
+        'abilities': [('Raise Undead', {'ability_range': 2, 'cooldown': 300, })],
     },
     'Demon': {
-        'is_ranged': False,
         'portrait': 'portraits/Demon.png',
         'image_name': 'tiles/Demon.png',
         'health': 200,
         'damage': 15,
         'name': 'Demon',
+        'attack_range': 1,
         'description': 'Tough opponent',
-        'abilities': [('Fireball', {'ability_range' : 3, 'power': 15, 'aoe':0.75, 'need_los' : True, 'cooldown':300,}),
-            ('Call Imp', {'ability_range':1, 'cooldown':600,}) ],
+        'abilities': [('Fireball', {'ability_range': 3, 'power': 15, 'aoe': 0.75, 'need_los': True, 'cooldown': 300, }),
+                      ('Call Imp', {'ability_range': 1, 'cooldown': 600, })],
     },
     'Imp': {
         'is_ranged': True,
@@ -388,8 +398,9 @@ DEFS = {
         'health': 40,
         'damage': 8,
         'name': 'Imp',
+        'attack_range': 2,
         'description': 'Small caster demon',
-        'abilities': [('Lightning', {'ability_range' : 5, 'damagefactor':1})],
+        'abilities': [('Lightning', {'ability_range': 5, 'damagefactor': 1})],
     },
     'Banshee': {
         'portrait': 'portraits/Necromancer.png',
@@ -397,6 +408,7 @@ DEFS = {
         'health': 70,
         'damage': 5,
         'name': 'Banshee',
-        'abilities': [('Scream', {'power': 14, 'ability_range': 2, 'cooldown': 300, 'duration':300 })],
+        'attack_range': 1,
+        'abilities': [('Scream', {'power': 14, 'ability_range': 2, 'cooldown': 300, 'duration': 300})],
     },
 }

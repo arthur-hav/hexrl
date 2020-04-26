@@ -73,8 +73,8 @@ class Combat(CascadeElement):
 
 
 class CombatInterface (Interface):
-    def __init__(self, father, mob_list):
-        self.combat = Combat(zip(father.pc_list, father.formation), mob_list)
+    def __init__(self, father, mob_list, pc_list, pc_formation):
+        self.combat = Combat(zip(pc_list, pc_formation), mob_list)
         self.combat.new_turn()
         self.combat_ui = GameUI(self.combat)
         self.selected = None

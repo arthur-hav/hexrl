@@ -392,7 +392,6 @@ DEFS = {
                       ('Call Imp', {'ability_range': 1, 'cooldown': 600, })],
     },
     'Imp': {
-        'is_ranged': True,
         'portrait': 'portraits/Imp.png',
         'image_name': 'tiles/Imp.png',
         'health': 40,

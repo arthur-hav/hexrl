@@ -182,7 +182,7 @@ class TeleportAbility(Ability):
     def get_ai_valid_target(self, creature):
         valid_tiles = [t for t in GameTile.all_tiles(creature.combat.MAP_RADIUS) if self.is_valid_target(creature, t)]
 
-        if creature.is_ranged:
+        if creature.attack_range > 1:
             for cr in list(creature.combat.creatures.values()):
                 if creature.tile.dist(cr.tile) < 2.25 and creature.is_pc != cr.is_pc:
                     return max(valid_tiles, key=lambda x: self._dist_nearest_enemy(creature, x))

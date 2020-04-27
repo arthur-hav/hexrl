@@ -6,34 +6,6 @@ import random
 import items
 import json
 import os
-from gametile import GameTile
-
-class EquipInterface(Interface, CascadeElement):
-    def __init__(self, father, item):
-        CascadeElement.__init__(self)
-        self.item = item
-        self.bg = SimpleSprite('helpmodal.png')
-        self.bg.rect.x, self.bg.rect.y = 302, 200
-        self.text = TextSprite('Apply to adventurer with [1-5]. [Esc] to cancel.', '#ffffff', 330, 250, maxlen=350)
-        self.stats = TextSprite(str(item), '#ffffff', 330, 220, maxlen=350)
-        self.subsprites = [self.bg, self.stats, self.text]
-        Interface.__init__(self, father, keys=[
-            (K_ESCAPE, lambda x: self.done()),
-            ('[1-5]', self.equip),
-        ])
-
-    def equip(self, teamnum):
-        if int(teamnum) >= len(self.father.pc_list):
-            return
-        self.item.equip(self.father.pc_list[int(teamnum) - 1])
-        self.father.inventory.remove(self.item)
-        self.done()
-
-    def update(self, pos):
-        self.father.update(pos)
-        super().update(pos)
-        self.display()
-
 
 class FightButton(CascadeElement):
     def __init__(self):
@@ -153,9 +125,7 @@ class StatusDisplay(CascadeElement):
         self.teammates = []
 
     def update(self, mouse_pos):
-        if not self.teammates:
-            for i, pc in enumerate(self.worldinterface.pc_list):
-                self.teammates.append(TeammateDisplay(pc, 20, 158 + 40 * i))
+        self.teammates = [TeammateDisplay(pc, 20, 158 + 40 * i) for i, pc in enumerate(self.worldinterface.pc_list)]
         self.gold_stat.set_text(str(self.worldinterface.party_gold))
         self.day_text.set_text("Level %d" % self.worldinterface.level)
 
@@ -171,13 +141,6 @@ class StatusDisplay(CascadeElement):
         self.subsprites = [self.gold_icon, self.gold_stat, self.day_text] + self.inventory + self.teammates + self.items
 
     def on_click(self, mouse_pos):
-        for sprite in self.worldinterface.inventory:
-            if sprite.rect.collidepoint(mouse_pos):
-                ei = EquipInterface(self.worldinterface, sprite)
-                ei.activate()
-                ei.display()
-                self.worldinterface.desactivate()
-                return
 
         for pc in self.worldinterface.pc_list:
             for item in pc.items:
@@ -186,13 +149,21 @@ class StatusDisplay(CascadeElement):
                     self.worldinterface.inventory.append(item)
 
 class Shop(CascadeElement):
-    def __init__(self):
+    def __init__(self, father):
         CascadeElement.__init__(self)
+        self.items = []
+        self.item_texts = []
+        self.father = father
         self.init_shop()
 
     def init_shop(self):
         self.items = []
         self.item_texts = []
+        self.mercenary = Creature(random.choice(['Barbarian', 'Fighter', 'Archer', 'Wizard', 'Enchantress']), is_pc=True)
+        self.mercenary.rect.x, self.mercenary.rect.y = 330, 150
+        self.mercenary_price = 400 + len(self.father.pc_list) ** 2 * 50
+        self.item_texts.append(TextSprite(f"Mercenary {self.mercenary.name} - {self.mercenary_price} gold", "#ffffff", 368, 154))
+
         for i in range(5):
             choice = random.choice(list(items.ITEMS.keys()))
             item_class = items.ITEMS[choice][0]
@@ -200,26 +171,40 @@ class Shop(CascadeElement):
             item = item_class(*item_args)
             self.items.append(item)
             self.item_texts.append(
-                TextSprite("%s - %d gold" % (item.name, item.shop_price), "#ffffff", 368, 304 + 40 * i))
+                TextSprite("%s - %d gold" % (item.name, item.shop_price), "#ffffff", 368, 154 + 40 * i))
 
-    def buy(self, father, item):
+    def buy(self, item):
         num = self.items.index(item)
-        if father.party_gold < self.items[num].shop_price:
+        if self.father.party_gold < self.items[num].shop_price:
             return
-        father.party_gold -= self.items[num].shop_price
-        father.inventory.append(self.items[num])
+        self.father.party_gold -= self.items[num].shop_price
+        self.father.inventory.append(self.items[num])
         self.items.pop(num)
         self.item_texts.pop(num)
 
+    def buy_merc(self):
+        if self.father.party_gold < self.mercenary_price:
+            return
+        self.father.party_gold -= self.mercenary_price
+        self.father.pc_list.append(self.mercenary)
+        self.item_texts[0].set_text("")
+        self.mercenary = None
+
     def update(self, mouse_pos):
-        for i, item in enumerate(self.items):
-            item.rect.x, item.rect.y = 330, 200 + 40 * i
+
+        for i, item in enumerate(self.items, 1):
+            item.rect.x, item.rect.y = 330, 150 + 40 * i
             self.item_texts[i] = TextSprite("%s - %d gold" % (item.name, item.shop_price), "#ffffff", 368,
-                                            204 + 40 * i)
-        self.subsprites = self.items + self.item_texts
+                                            154 + 40 * i)
+        self.subsprites = ([self.mercenary] if self.mercenary else []) + self.items + self.item_texts
         self.display()
 
-
+    def on_click(self, mouse_pos):
+        for item in self.items:
+            if item.rect.collidepoint(mouse_pos):
+                self.buy(item)
+        if self.mercenary and self.mercenary.rect.collidepoint(mouse_pos):
+            self.buy_merc()
 
 
 class WorldInterface(Interface, CascadeElement):
@@ -229,14 +214,16 @@ class WorldInterface(Interface, CascadeElement):
         self.mob_list = []
         self.bg = SimpleSprite('menu.png')
         self.inventory = []
+        self.dragged_item = None
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
-        self.pc_position = GameTile(0, 0)
-        self.pc_sprite = SimpleSprite('tiles/Fighter.png')
-        self.shop = Shop()
         self.fight_button = FightButton()
         self.tooltip = TextSprite("", "#ffffff", 20, 480, maxlen=200)
         self.subsprites = [self.bg, self.fight_button, self.inventory_display, self.cursor, self.tooltip]
         self.formation = [(-2, 4), (-1, 4.5), (0, 4), (1, 4.5), (2, 4), ]
+        self.pc_list = [
+            Creature(random.choice(['Barbarian', 'Fighter', 'Archer', 'Wizard', 'Enchantress']), is_pc=True)
+        ]
+        self.shop = Shop(self)
         Interface.__init__(self, father,
                            keys=[(K_ESCAPE, self.quit)])
 
@@ -253,27 +240,38 @@ class WorldInterface(Interface, CascadeElement):
 
     def on_click(self, mouse_pos):
         self.inventory_display.on_click(mouse_pos)
-        for item in self.shop.items:
-            if item.rect.collidepoint(mouse_pos):
-                self.shop.buy(self, item)
+        self.shop.on_click(mouse_pos)
         if self.fight_button.bg.rect.collidepoint(mouse_pos):
             self.start_combat(['Gobelin'])
+        for item in self.inventory:
+            if item.rect.collidepoint(mouse_pos):
+                self.dragged_item = item
+                self.inventory.remove(item)
+
+    def on_mouseup(self, pos):
+        if self.dragged_item:
+            for pc in self.pc_list:
+                if pc.rect.colliderect(self.cursor.rect):
+                    self.dragged_item.equip(pc)
+                    self.dragged_item = None
+                    return
+            self.inventory.append(self.dragged_item)
+            self.dragged_item = None
 
     def new_game(self, slot):
         self.slot = slot
         self.party_gold = 0
         self.level = 1
-        self.pc_list = [
-            Creature('Fighter', is_pc=True),
-            Creature('Barbarian', is_pc=True),
-            Creature('Archer', is_pc=True),
-            Creature('Wizard', is_pc=True),
-            Creature('Enchantress', is_pc=True),
-        ]
+
 
     def update(self, mouse_pos):
         self.inventory_display.update(mouse_pos)
+        if self.dragged_item:
+            self.cursor = self.dragged_item
+        else:
+            self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.cursor.rect.x, self.cursor.rect.y = mouse_pos
+        self.subsprites[4] = self.cursor
         self.display()
         self.tooltip.set_text("")
         for item in self.inventory:
@@ -317,7 +315,7 @@ class WorldInterface(Interface, CascadeElement):
             item_args = items.ITEMS[key][1]
             self.inventory.append(item_class(*item_args))
         self.pc_list = [Creature.dict_load(pc, self.inventory) for pc in d['pcs']]
-        self.shop = Shop()
+        self.shop = Shop(self)
 
     def pay(self, amount):
         self.party_gold -= amount

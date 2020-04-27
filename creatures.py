@@ -251,12 +251,14 @@ class Creature(SimpleSprite, CascadeElement):
             if tile and tile.in_boundaries(self.combat.MAP_RADIUS) and not self.rooted:
                 self.move_or_attack(tile)
                 return
+        # ATTACKING
+        if nearest_ennemy.tile.dist(self.tile) <= self.attack_range:
+            self.attack(nearest_ennemy.tile)
+            return
+
         # HUNTING
         if (not self.rooted or nearest_ennemy.tile.dist(self.tile) < 1.25) and (
                 self.attack_range == 1 or nearest_ennemy.tile.dist(self.tile) > self.attack_range):
-            if nearest_ennemy.tile.dist(self.tile) <= self.attack_range:
-                self.attack(nearest_ennemy.tile)
-                return
             tile = self.step_to(nearest_ennemy.tile)
             # Only swap position with a lesser hp ally to avoid dancing
             if tile not in self.combat.creatures or self.combat.creatures[tile].is_pc != self.is_pc or \

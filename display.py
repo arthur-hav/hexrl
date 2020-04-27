@@ -23,6 +23,8 @@ class Display:
         #Initialize Everything
         self.key_handlers = defaultdict(list)
         self.mouse_handlers = []
+        self.mouseup_handlers = []
+        self.mouse_right_handlers = []
         self.update_handlers = []
         self.sprites = pygame.sprite.OrderedUpdates(())
 
@@ -34,6 +36,12 @@ class Display:
     def subscribe_click(self, eventhandler):
         self.mouse_handlers.append(eventhandler)
 
+    def subscribe_mouseup(self, eventhandler):
+        self.mouseup_handlers.append(eventhandler)
+
+    def subscribe_right_click(self, eventhandler):
+        self.mouse_right_handlers.append(eventhandler)
+
     def subscribe_update(self, eventhandler):
         self.update_handlers.append(eventhandler)
 
@@ -42,6 +50,9 @@ class Display:
 
     def unsubscribe_click(self, eventhandler):
         self.mouse_handlers.remove(eventhandler)
+
+    def unsubscribe_mouseup(self, eventhandler):
+        self.mouseup_handlers.remove(eventhandler)
 
     def unsubscribe_update(self, eventhandler):
         self.update_handlers.remove(eventhandler)
@@ -101,7 +112,8 @@ class Display:
                 elif event.type == MOUSEMOTION:
                     pass
                 elif event.type == MOUSEBUTTONUP:
-                    pass
+                    for handler in self.mouseup_handlers:
+                        handler(pos)
             for handler in self.update_handlers:
                 handler(pos)
             time.sleep(0.020)
@@ -265,12 +277,14 @@ class Interface:
 
     def desactivate(self):
         DISPLAY.unsubscribe_click(self.on_click)
+        DISPLAY.unsubscribe_mouseup(self.on_mouseup)
         DISPLAY.unsubscribe_update(self.update)
         for k, v in self.keys:
             DISPLAY.unsubscribe_key(k, v)
 
     def activate(self):
         DISPLAY.subscribe_click(self.on_click)
+        DISPLAY.subscribe_mouseup(self.on_mouseup)
         DISPLAY.subscribe_update(self.update)
         for k, v in self.keys:
             DISPLAY.subscribe_key(k, v)
@@ -282,6 +296,9 @@ class Interface:
         pass
     
     def on_click(self, pos):
+        pass
+
+    def on_mouseup(self, pos):
         pass
 
     def done(self):

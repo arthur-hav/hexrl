@@ -7,10 +7,10 @@ import items
 import json
 import os
 
-class FightButton(CascadeElement):
-    def __init__(self):
+class Button(CascadeElement):
+    def __init__(self, text, x, y):
         CascadeElement.__init__(self)
-        self.text = TextSprite('FIGHT', '#ffffff', 480, 480)
+        self.text = TextSprite(text, '#ffffff', x, y)
         txt = self.text.textsprites[0]
         self.bg = Gauge(txt.rect.w * 2 + 4, txt.rect.h * 2 + 4, "#ff0000")
         self.bg.move_to(txt.rect.x - 2, txt.rect.y - 2)
@@ -39,19 +39,30 @@ class MainMenuInterface(Interface, CascadeElement):
     def __init__(self):
         CascadeElement.__init__(self)
         self.bg = SimpleSprite('menu.png')
-        self.hello = TextSprite('Choose a save slot with keys 1-3', '#ffffff', 320, 280)
         self.slots = []
-        for i in range(3):
-            try:
-                slotname = 'Day %d' % json.load(open('save%d.json' % (i + 1)))['level']
-            except FileNotFoundError:
-                slotname = 'Empty'
-            self.slots.append(TextSprite('[%d] Slot - %s' % (i + 1, slotname), '#ffffff', 320, 300 + 20 * i))
-        self.subsprites = [self.bg, self.hello] + self.slots
+        self.play_buttons = []
+        self.erase_buttons = []
+        self.cursor = SimpleSprite('icons/magnifyingglass.png')
+
+        for i in range(5):
+            self.slots.append(TextSprite(f'', '#ffffff', 320, 220 + 40 * i))
+            self.play_buttons.append(Button('Play', 480, 220 + 40 * i))
+
+        self._refresh_saves()
         Interface.__init__(self, None, keys=[
             (K_ESCAPE, lambda x: self.done()),
-            ('[1-3]', self.start),
         ])
+
+    def _refresh_saves(self):
+        self.erase_buttons = []
+        for i in range(5):
+            try:
+                slotname = 'Wave {}'.format(json.load(open('save%d.json' % (i + 1)))['level'])
+                self.erase_buttons.append(Button('Erase', 540, 220 + 40 * i))
+            except FileNotFoundError:
+                slotname = 'Empty'
+            self.slots[i].set_text(f'Slot {i + 1} - {slotname}')
+        self.subsprites = [self.bg] + self.slots + self.play_buttons + self.erase_buttons + [self.cursor]
 
     def start(self, slot):
         wi = WorldInterface(self)
@@ -64,16 +75,20 @@ class MainMenuInterface(Interface, CascadeElement):
         self.desactivate()
 
     def on_return(self, defunct=None):
-        for i in range(3):
-            try:
-                slotname = 'Level %d' % json.load(open('save%d.json' % (i + 1)))['level']
-            except FileNotFoundError:
-                slotname = 'Empty'
-            self.slots[i].set_text('[%d] Slot - %s' % (i + 1, slotname))
+        self._refresh_saves()
 
     def update(self, mouse_pos):
+        self.cursor.rect.x, self.cursor.rect.y = mouse_pos
         self.display()
 
+    def on_click(self, pos):
+        for i, button in enumerate(self.play_buttons):
+            if button.bg.rect.collidepoint(pos):
+                self.start(i + 1)
+        for i, button in enumerate(self.erase_buttons):
+            if button.bg.rect.collidepoint(pos):
+                os.unlink('save{}.json'.format(i + 1))
+                self._refresh_saves()
 
 class TeammateDisplay(CascadeElement):
     def __init__(self, creature, basex, basey):
@@ -216,7 +231,7 @@ class WorldInterface(Interface, CascadeElement):
         self.inventory = []
         self.dragged_item = None
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
-        self.fight_button = FightButton()
+        self.fight_button = Button('Fight', 480, 480)
         self.tooltip = TextSprite("", "#ffffff", 20, 480, maxlen=200)
         self.subsprites = [self.bg, self.fight_button, self.inventory_display, self.cursor, self.tooltip]
         self.formation = [(-2, 4), (-1, 4.5), (0, 4), (1, 4.5), (2, 4), ]

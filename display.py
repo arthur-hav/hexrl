@@ -232,16 +232,17 @@ class TextSprite:
     """ Text sprites, can be re-used through set_text """
     def __init__ (self, text, color, x=0, y=0, maxlen=None):
         self.font = pygame.font.Font("data/font/Vera.ttf", 8)
+        self.text = text
         self.color = [color] if isinstance(color, str) else color
         self.maxlen = maxlen
         self.x = x
         self.y = y
         self.textsprites = []
         self.must_show = True
-        self._render(text)
+        self._render()
 
-    def _render(self, text):
-        words = text.split(' ')
+    def _render(self):
+        words = self.text.split(' ')
         i = 0
         j = 0
         for word in words:
@@ -259,7 +260,8 @@ class TextSprite:
     def set_text (self, text):
         if self.textsprites:
             self.textsprites = []
-        self._render(text)
+        self.text = text
+        self._render()
 
     def display(self):
         if not self.must_show:

@@ -177,7 +177,7 @@ class Shop(CascadeElement):
         self.mercenary = Creature(random.choice(['Barbarian', 'Fighter', 'Archer', 'Wizard', 'Enchantress']), is_pc=True)
         self.mercenary.rect.x, self.mercenary.rect.y = 330, 150
         self.mercenary_price = 400 + len(self.father.pc_list) ** 2 * 50
-        self.item_texts.append(TextSprite(f"Mercenary {self.mercenary.name} - {self.mercenary_price} gold", "#ffffff", 368, 154))
+        self.mercenary_text = TextSprite(f"Mercenary {self.mercenary.name} - {self.mercenary_price} gold", "#ffffff", 368, 154)
 
         for i in range(5):
             choice = random.choice(list(items.ITEMS.keys()))
@@ -206,12 +206,13 @@ class Shop(CascadeElement):
         self.mercenary = None
 
     def update(self, mouse_pos):
-
-        for i, item in enumerate(self.items, 1):
-            item.rect.x, item.rect.y = 330, 150 + 40 * i
+        for i, item in enumerate(self.items):
+            item.rect.x, item.rect.y = 330, 150 + 40 * (i + 1)
             self.item_texts[i] = TextSprite("%s - %d gold" % (item.name, item.shop_price), "#ffffff", 368,
-                                            154 + 40 * i)
-        self.subsprites = ([self.mercenary] if self.mercenary else []) + self.items + self.item_texts
+                                            154 + 40 * (i + 1))
+        self.subsprites = self.items + self.item_texts
+        if self.mercenary:
+            self.subsprites.extend([self.mercenary, self.mercenary_text])
         self.display()
 
     def on_click(self, mouse_pos):
@@ -257,7 +258,7 @@ class WorldInterface(Interface, CascadeElement):
         self.inventory_display.on_click(mouse_pos)
         self.shop.on_click(mouse_pos)
         if self.fight_button.bg.rect.collidepoint(mouse_pos):
-            self.start_combat(['Gobelin'])
+            self.start_combat(['Gobelin'] * int(1 + self.level / 5))
         for item in self.inventory:
             if item.rect.collidepoint(mouse_pos):
                 self.dragged_item = item
@@ -275,9 +276,8 @@ class WorldInterface(Interface, CascadeElement):
 
     def new_game(self, slot):
         self.slot = slot
-        self.party_gold = 0
+        self.party_gold = 1000
         self.level = 1
-
 
     def update(self, mouse_pos):
         self.inventory_display.update(mouse_pos)
@@ -334,9 +334,6 @@ class WorldInterface(Interface, CascadeElement):
 
     def pay(self, amount):
         self.party_gold -= amount
-
-    def combat(self, _):
-        self.start_combat(['Gobelin'])
 
     def start_combat(self, mobs):
         self.save_game()

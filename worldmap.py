@@ -1,4 +1,4 @@
-from combat import CombatInterface
+from combat import CombatInterface, Combat
 from display import Interface, TextSprite, SimpleSprite, CascadeElement, Gauge
 from creatures import Creature
 from pygame.locals import *
@@ -6,6 +6,7 @@ import random
 import items
 import json
 import os
+from gametile import GameTile
 
 class Button(CascadeElement):
     def __init__(self, text, x, y):
@@ -33,6 +34,69 @@ class GameOverModal(Interface, CascadeElement):
     def cancel(self, key):
         self.done()
         self.father.done()
+
+
+class PositionningModal(Interface, CascadeElement):
+    def __init__(self, father):
+        CascadeElement.__init__(self)
+        Interface.__init__(self, father, keys=[
+            (K_ESCAPE, self.cancel),
+            (K_RETURN, self.cancel)
+        ])
+        self.basex, self.basey = 302, 200
+        self.bg = SimpleSprite('helpmodal.png')
+        self.bg.rect.move_ip(self.basex, self.basey)
+        self.tile_sprites = []
+        self.tiles = []
+        self.pc_positions = []
+        self.cursor = SimpleSprite("icons/magnifyingglass.png")
+        self.dragging = None
+        for tile in GameTile.all_tiles(Combat.MAP_RADIUS):
+            if tile.y > 0:
+                tile_sprite = SimpleSprite('tiles/GreyTile.png')
+                tile_sprite.rect.x, tile_sprite.rect.y = 282 + 32 * (7 + tile.x), 200 + 32 * tile.y
+                self.tile_sprites.append(tile_sprite)
+                self.tiles.append(tile)
+        self._init_formation()
+        self.subsprites = [self.bg] + self.tile_sprites + self.pc_positions + [self.cursor]
+        self.display()
+
+    def cancel(self, key):
+        self.done()
+
+    def on_click(self, mouse_pos):
+        for creature in self.pc_positions:
+            if creature.rect.collidepoint(mouse_pos):
+                self.dragging = creature
+
+    def _init_formation(self):
+        self.pc_positions = []
+        for creature, position in zip(self.father.pc_list, self.father.formation):
+            creature_sprite = SimpleSprite(creature.frame_name)
+            creature_sprite.rect.x, creature_sprite.rect.y = 282 + 32 * (7 + position[0]), 200 + 32 * position[1]
+            self.pc_positions.append(creature_sprite)
+
+    def update(self, pos):
+        print(pos)
+        if self.dragging:
+            self.cursor = self.dragging
+            self.cursor.rect.x, self.cursor.rect.y = pos[0] - 16, pos[1] - 16
+        else:
+            self.cursor.rect.x, self.cursor.rect.y = pos
+        self.subsprites = [self.bg] + self.tile_sprites + self.pc_positions + [self.cursor]
+        self.display()
+
+    def on_mouseup(self, pos):
+        if self.dragging:
+            for tile in self.tile_sprites:
+                if tile.rect.collidepoint(pos):
+                    index = self.pc_positions.index(self.dragging)
+                    index_tile = self.tile_sprites.index(tile)
+                    self.father.formation[index] = (self.tiles[index_tile].x, self.tiles[index_tile].y)
+                    self.dragging = None
+                    self.cursor = SimpleSprite('icons/magnifyingglass.png')
+                    self._init_formation()
+
 
 
 class MainMenuInterface(Interface, CascadeElement):
@@ -233,8 +297,9 @@ class WorldInterface(Interface, CascadeElement):
         self.dragged_item = None
         self.cursor = SimpleSprite('icons/magnifyingglass.png')
         self.fight_button = Button('Fight', 480, 480)
+        self.edit_position_button = Button('Positionning', 454, 440)
         self.tooltip = TextSprite("", "#ffffff", 20, 480, maxlen=200)
-        self.subsprites = [self.bg, self.fight_button, self.inventory_display, self.cursor, self.tooltip]
+        self.subsprites = [self.bg, self.fight_button, self.edit_position_button, self.inventory_display, self.cursor, self.tooltip]
         self.formation = [(-2, 4), (-1, 4.5), (0, 4), (1, 4.5), (2, 4), ]
         self.pc_list = [
             Creature(random.choice(['Barbarian', 'Fighter', 'Archer', 'Wizard', 'Enchantress']), is_pc=True)
@@ -244,25 +309,32 @@ class WorldInterface(Interface, CascadeElement):
                            keys=[(K_ESCAPE, self.quit)])
 
     def on_return(self, defunct=None):
-        self.pc_list = [pc for pc in self.pc_list if pc.health > 0]
-        if not self.pc_list:
-            self.erase_save()
-            game_over = GameOverModal(self)
-            self.desactivate()
-            game_over.activate()
-        self.level += 1
-        self.party_gold += 50 + 10 * self.level
-        self.shop.init_shop()
+        if isinstance(defunct, CombatInterface):
+            self.pc_list = [pc for pc in self.pc_list if pc.health > 0]
+            if not self.pc_list:
+                self.erase_save()
+                game_over = GameOverModal(self)
+                self.desactivate()
+                game_over.activate()
+            self.level += 1
+            self.party_gold += 50 + 10 * self.level
+            self.shop.init_shop()
 
     def on_click(self, mouse_pos):
         self.inventory_display.on_click(mouse_pos)
         self.shop.on_click(mouse_pos)
         if self.fight_button.bg.rect.collidepoint(mouse_pos):
             self.start_combat(['Gobelin'] * int(1 + self.level / 5))
+        if self.edit_position_button.bg.rect.collidepoint(mouse_pos):
+            self.edit_position()
         for item in self.inventory:
             if item.rect.collidepoint(mouse_pos):
                 self.dragged_item = item
                 self.inventory.remove(item)
+
+    def edit_position(self):
+        PositionningModal(self).activate()
+        self.desactivate()
 
     def on_mouseup(self, pos):
         if self.dragged_item:
